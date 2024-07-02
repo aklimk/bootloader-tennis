@@ -11,23 +11,28 @@ STACK_BOTTOM equ 0xAAAA
 ; heap : 0x8000 (incl) upwards
 ; stack : 0xFFFF (incl) downwards
 section .data
-	TITLE_ONE db "PONG", 0
-	TITLE_TWO db "DEMO-TITLE", 0
-	TITLE_THREE db "PLCEHLDR", 0
+	TITLE_ONE db "PONG"
+	TITLE_TWO db "DEMO-TITLE"
+	TITLE_THREE db "PLCEHLDR"
 	TITLES dw TITLE_ONE, TITLE_TWO, TITLE_THREE
 	TITLE_PADDINGS db 8, 8, 5, 5, 6, 6
+	NA_GAME_MSG db "Under Construction", 0
+	NA_GAME_MSG_PADDING db 32 
+	GAME_ENTRY_POINTS dw pong_main, na_main, na_main
 
 section .bss
 	SCREEN_STRING resb SCREEN_WIDTH * SCREEN_HEIGHT + (SCREEN_HEIGHT * 2)
+	MENU_EXITED resb 1
 	SELECTION resb 1
 
 section .text
-main:
-	; Set up stack
+setup_stack:
 	mov di, STACK_BOTTOM
 	mov ss, di
 	mov sp, STACK_TOP
 
+main:
+	mov byte [MENU_EXITED], 0
 	mov di, SCREEN_STRING
 	.start_game_loop:
 		call push_registers
@@ -41,6 +46,20 @@ main:
 		call push_registers		
 		call print_string
 		call pop_registers
+
+		call push_registers
+		call update_selection
+		call pop_registers
+
+		.if_exited:
+		cmp byte [MENU_EXITED], 1
+		jne .endif_exited
+		; MENU_EXITED == 1
+			mov bl, [SELECTION]
+			shl bl, 1 ; di = 2 * SELECTION
+			mov bx, [GAME_ENTRY_POINTS + bx]
+			jmp bx
+		.endif_exited:
 	jmp .start_game_loop
 
 ; Save all registers to the stack
@@ -98,6 +117,52 @@ clear_screen:
 	int 0x10 ; video services
 	ret
 
+; Reads key from bios interupt, if its wasd, update selection.
+update_selection:
+	mov ah, 0x00 ; read key press
+	int 0x16 ; keyboard io interupt
+	; ah = scan code, al = ascii
+	; High = scan, low = ascii
+	; < = 0x4B00, > = 0x4D00
+	; ^ = 0x4800, dwn = 0x5000
+	.if_up:
+	cmp ah, 0x48
+	jne .if_down
+	; scancode = 0x48
+		sub byte [SELECTION], 1
+	.if_down:
+	cmp ah, 0x50
+	jne .endif_keycode
+	; scancode = 0x50
+		add byte [SELECTION], 1
+	.endif_keycode:
+
+	; Make sure SELECTION stays in a valid range
+	.if_selection_over:
+	cmp byte [SELECTION], NUM_TITLES
+	jl .if_selection_under
+	; SELECTION >= NUM_TITLES
+		; SELECTION = NUM_TITLES - 1
+		mov byte [SELECTION], NUM_TITLES
+		sub byte [SELECTION], 1 
+	.if_selection_under:
+	cmp byte [SELECTION], 0
+	jge .endif_selection
+	; SELECTION < 0
+		mov byte [SELECTION], 0
+	.endif_selection:
+
+	; Detect enter keypress
+	; ENTER = 0x1C0D
+	.if_enter:
+	cmp ah, 0x1C
+	jne .endif_enter
+	; scancode = 0x1C 
+		; Exit menu flag true
+		mov byte [MENU_EXITED], 1
+	.endif_enter:
+	ret
+
 ; void fill_screen_border(char* screen_string)
 ; Renders a border to screen_string.
 ; Args:
@@ -153,10 +218,8 @@ fill_screen_border:
 
 		; x == SCREEN_WIDTH
 		; add \r\n to screen_string
-		mov byte [di], 0x0A
-		inc di
-		mov byte [di], 0x0D
-		inc di
+		mov word [di], 0x0A0D
+		add di, 2
 
 	; for(int y = 0; y < SCREEN_HEIGHT; <<<y++)>>>
 	inc ax
@@ -271,11 +334,9 @@ fill_screen_string:
 			cmp ax, 1
 			jle .endif_text_2
 			; y > 1
-				.if_text_y_lt_2:
-				cmp ax, NUM_TITLES + 1
-				jg .endif_text_2
-				; y < GAMES_COUNT
-					add si, 2
+			; don't need to check y < GAMES_COUNT as the
+			; padding will never be dereferenced
+				add si, 2
 		.endif_text_2:
 		
 
@@ -287,3 +348,53 @@ fill_screen_string:
 	; y == SCREEN_HEIGHT
 	ret
 
+; Entry point for the pong game.
+pong_main:
+	call push_registers
+	call clear_screen
+	call pop_registers
+
+	; check for escape to go back to menu
+	.loop:
+		.if_escape:
+		mov ah, 0x00 ; read key press
+		int 0x16 ; keyboard input
+		cmp ah, 0x01 ; ESC 
+		jne .endif_escape
+		; scancode == 0x01
+			jmp main
+		.endif_escape:
+	jmp .loop
+
+; Entry point for games not yet constructed.
+na_main:
+	call push_registers
+	call clear_screen
+	call pop_registers
+
+	; move cursor to middle of screen
+	mov ah, 0x02 ; cursor pos
+	mov bx, 0x00 ; page num
+	; row
+	mov dl, [NA_GAME_MSG_PADDING]
+	add dl, 1
+	mov dh, 12 ; column
+	int 0x10 ; video settings
+
+	; print na game message
+	mov di, NA_GAME_MSG
+	call push_registers
+	call print_string
+	call pop_registers
+
+	; check for escape to go back to menu
+	.loop:
+		.if_escape:
+		mov ah, 0x00 ; read key press
+		int 0x16 ; keyboard input
+		cmp ah, 0x01 ; ESC 
+		jne .endif_escape
+		; scancode == 0x01
+			jmp main
+		.endif_escape:
+	jmp .loop
