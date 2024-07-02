@@ -300,22 +300,29 @@ fill_screen_string:
 	; y == SCREEN_HEIGHT
 	ret
 
+; Non block escape check to go 
+; back to the menu.
+check_escape:
+	.if_escape:
+	mov ah, 0x00 ; read key press
+	int 0x16 ; keyboard input
+	cmp ah, 0x01 ; ESC 
+	jne .endif_escape
+	; scancode == 0x01
+		jmp main
+	.endif_escape:
+	ret
+
 ; Entry point for the pong game.
 pong_main:
 	call push_registers
 	call clear_screen
 	call pop_registers
 
-	; check for escape to go back to menu
 	.loop:
-		.if_escape:
-		mov ah, 0x00 ; read key press
-		int 0x16 ; keyboard input
-		cmp ah, 0x01 ; ESC 
-		jne .endif_escape
-		; scancode == 0x01
-			jmp main
-		.endif_escape:
+		call push_registers
+		call check_escape
+		call pop_registers
 	jmp .loop
 
 ; Entry point for games not yet constructed.
@@ -339,14 +346,9 @@ na_main:
 	call print_string
 	call pop_registers
 
-	; check for escape to go back to menu
 	.loop:
-		.if_escape:
-		mov ah, 0x00 ; read key press
-		int 0x16 ; keyboard input
-		cmp ah, 0x01 ; ESC 
-		jne .endif_escape
-		; scancode == 0x01
-			jmp main
-		.endif_escape:
+		call push_registers
+		call check_escape
+		call pop_registers
 	jmp .loop
+
