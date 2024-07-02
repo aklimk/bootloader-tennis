@@ -209,22 +209,20 @@ fill_screen_string:
 				mov cl, 0x23 ; hash
 			.endif_boundry:
 			
-			; set char
-			mov [di], cl
 	
 			; Menu Rendering
 			; char ">" rendering
 			.if_selector_x:
-			mov cx, [SELECTION]
-			add cx, 2
-			cmp ax, cx
+			mov dx, [SELECTION]
+			add dx, 2
+			cmp ax, dx
 			jne .endif_selector
 			; if (y == SELECTION + 2)
 				.if_selector_y:
 				cmp bx, 2
 				jne .endif_selector
 				; if (x == 2)
-					mov byte [di], 0x3E ; >
+					mov cl, 0x3E ; >
 			.endif_selector:
 			
 			; title rendering
@@ -241,9 +239,9 @@ fill_screen_string:
 					jb .end_text_if
 					; if (x > paddings[0])
 						.if_text_x_2:
-						mov cx, SCREEN_WIDTH
-						sub cl, [si + 1]
-						cmp bl, cl
+						mov dx, SCREEN_WIDTH
+						sub dl, [si + 1]
+						cmp bl, dl
 						jae .end_text_if
 						; if (x <= SCREEN_WIDTH - paddings[1])
 							; Render Text
@@ -258,20 +256,18 @@ fill_screen_string:
 							mov di, [TITLES + di] ; bp = GAMES[y - 2]
 						
 							; GAMES[y - 2][x - paddings[0]]
-							mov cx, bx ; cx = x
-							sub cl, [si] ; cx = x - paddings[0]
-							add di, cx ; bp = GAMES[y - 2] + (x - paddings[0])
+							mov dx, bx ; dx = x
+							sub dl, [si] ; dx = x - paddings[0]
+							add di, dx ; bp = GAMES[y - 2] + (x - paddings[0])
 	
 							; derefernce using si instead of bp, as bp uses
 							; ss instead of ds 
 							mov cl, [di] ; cl = GAMES[y - 2][x - paddings[0]]
 							pop di	
-
-							; char at (x, y) = GAMES[y - 2][x - paddings[0]]
-							mov [di], cl
 			.end_text_if:
 			
-			; next char
+			; set char
+			mov [di], cl
 			inc di
 
 		; for(int x = 0; x < SCREEN_WIDTH; <<<x++)>>>
