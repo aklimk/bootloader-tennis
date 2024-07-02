@@ -163,17 +163,19 @@ update_selection:
 	.endif_enter:
 	ret
 
-; void fill_screen_border(char* screen_string)
-; Renders a border to screen_string.
-; Args:
+
+; void fill_screen_string(char* screen_string, int selection, int* paddings)
+; Renders the current menu state to screen_string.
+; Args: 
 ;     none
-; Returns: 
-;     none
-fill_screen_border:
+; Returns:
+;	  none
+fill_screen_string:
 	mov di, SCREEN_STRING
+	mov si, TITLE_PADDINGS
 
 	mov ax, 0
-	.start_loop_y: 
+	.start_loop_y:
 	cmp ax, SCREEN_HEIGHT
 	je .end_loop_y
 	; <<<for(int y = 0; y < SCREEN_HEIGHT;>>> y++)
@@ -183,7 +185,7 @@ fill_screen_border:
 		cmp bx, SCREEN_WIDTH
 		je .end_loop_x
 		; <<<for(int x = 0; x < SCREEN_WIDTH;>>> x++)
-			
+			; Create Border
 			mov cl, 0x20 ; Space
 			.if_top_boundry:
 			cmp ax, 0
@@ -209,54 +211,8 @@ fill_screen_border:
 			
 			; set char
 			mov [di], cl
-			inc di
 	
-		; for(int x = 0; x < SCREEN_WIDTH; <<<x++)>>>
-		inc bx
-		jmp .start_loop_x
-		.end_loop_x:
-
-		; x == SCREEN_WIDTH
-		; add \r\n to screen_string
-		mov word [di], 0x0A0D
-		add di, 2
-
-	; for(int y = 0; y < SCREEN_HEIGHT; <<<y++)>>>
-	inc ax
-	jmp .start_loop_y
-	.end_loop_y:
-
-	; y == SCREEN_HEIGHT
-	ret
-
-
-; void fill_screen_string(char* screen_string, int selection, int* paddings)
-; Renders the current menu state to screen_string.
-; Args: 
-;     none
-; Returns:
-;	  none
-fill_screen_string:
-	; create border around screen
-	call push_registers
-	call fill_screen_border
-	call pop_registers
-
-	mov di, SCREEN_STRING
-	mov si, TITLE_PADDINGS
-
-	mov ax, 0
-	.start_loop_y:
-	cmp ax, SCREEN_HEIGHT
-	je .end_loop_y
-	; <<<for(int y = 0; y < SCREEN_HEIGHT;>>> y++)
-
-		mov bx, 0
-		.start_loop_x:
-		cmp bx, SCREEN_WIDTH
-		je .end_loop_x
-		; <<<for(int x = 0; x < SCREEN_WIDTH;>>> x++)
-
+			; Menu Rendering
 			; char ">" rendering
 			.if_selector_x:
 			mov cx, [SELECTION]
@@ -324,8 +280,8 @@ fill_screen_string:
 		.end_loop_x:
 
 		; x == SCREEN_WIDTH	
-
-		; compensate for \r\n
+		; add \r\n to screen_string
+		mov word [di], 0x0A0D
 		add di, 2
 		
 		; increment padding array to next padding pair
