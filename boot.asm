@@ -44,17 +44,11 @@ main:
 	mov byte [MENU_EXITED], 0
 	mov di, SCREEN_STRING
 	.start_game_loop:
-		mov bp, clear_screen
-		call call_wrapper
-		
-		mov bp, fill_screen_string
-		call call_wrapper
-		
-		mov bp, print_string
-		call call_wrapper
-		
-		mov bp, update_selection	
-		call call_wrapper
+		call clear_screen
+		call fill_screen_string
+		mov di, SCREEN_STRING
+		call print_string
+		call update_selection
 
 		.if_exited:
 		cmp byte [MENU_EXITED], 1
@@ -63,41 +57,12 @@ main:
 			mov bl, [SELECTION]
 			shl bl, 1 ; di = 2 * SELECTION
 			mov bx, [GAME_ENTRY_POINTS + bx]
-			mov bp, clear_screen
-			call call_wrapper
+			push bx
+			call clear_screen
+			pop bx
 			jmp bx
 		.endif_exited:
 	jmp .start_game_loop
-
-; put the address to call in bp.
-; pushes and pops all registers.
-call_wrapper:
-	; push registers
-	push ax
-	push bx
-	push cx
-	push dx
-	push si
-	push di
-
-	; stack = retadd
-	mov word [0x8192], bp
-	; stack = retadd, 6
-	push wrapper_exit_location
-	; stack = retadd, 6, $ + 2
-	jmp word [0x8192]
-	; stack = retadd, 6
-	wrapper_exit_location:
-	; pop registers
-	pop di
-	pop si
-	pop dx
-	pop cx
-	pop bx
-	pop ax
-
-	; stack = retadd
-	ret
 
 ; void print_string(char* string)
 ; Prints the screen string to terminal.
@@ -333,8 +298,7 @@ check_escape:
 ; Entry point for the pong game.
 pong_main:
 	.loop:
-		mov bp, check_escape
-		call call_wrapper
+		call check_escape
 	jmp .loop
 
 ; Entry point for games not yet constructed.
@@ -350,11 +314,9 @@ na_main:
 
 	; print na game message
 	mov di, NA_GAME_MSG
+	call print_string
 
-	mov bp, print_string
-	call call_wrapper
 	.loop:
-		mov bp, check_escape
-		call call_wrapper
+		call check_escape
 	jmp .loop
 
