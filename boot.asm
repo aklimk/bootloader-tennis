@@ -307,14 +307,18 @@ fill_screen_string:
 ; Non block escape check to go 
 ; back to the menu.
 check_escape:
-	.if_escape:
-	mov ah, 0x00 ; read key press
+	mov ah, 0x01 ; keypress from buffer
 	int 0x16 ; keyboard input
-	cmp ah, 0x01 ; ESC 
-	jne .endif_escape
-	; scancode == 0x01
-		jmp main
-	.endif_escape:
+	jz .endif_escape
+	; key buffer is not empty
+		.if_escape:
+		mov ah, 0x00
+		int 0x16
+		cmp ah, 0x01 ; ESC 
+		jne .endif_escape
+		; scancode == 0x01
+			jmp main
+		.endif_escape:
 	ret
 
 ; Entry point for the pong game.
@@ -340,7 +344,6 @@ na_main:
 
 	mov bp, print_string
 	call call_wrapper
-	
 	.loop:
 		mov bp, check_escape
 		call call_wrapper
