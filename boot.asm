@@ -35,21 +35,17 @@ main:
 	mov byte [MENU_EXITED], 0
 	mov di, SCREEN_STRING
 	.start_game_loop:
-		call push_registers
-		call clear_screen
-		call pop_registers
+		mov bp, clear_screen
+		call call_wrapper
 		
-		call push_registers
-		call fill_screen_string
-		call pop_registers
+		mov bp, fill_screen_string
+		call call_wrapper
 		
-		call push_registers		
-		call print_string
-		call pop_registers
-
-		call push_registers
-		call update_selection
-		call pop_registers
+		mov bp, print_string
+		call call_wrapper
+		
+		mov bp, update_selection	
+		call call_wrapper
 
 		.if_exited:
 		cmp byte [MENU_EXITED], 1
@@ -58,33 +54,41 @@ main:
 			mov bl, [SELECTION]
 			shl bl, 1 ; di = 2 * SELECTION
 			mov bx, [GAME_ENTRY_POINTS + bx]
+			mov bp, clear_screen
+			call call_wrapper
 			jmp bx
 		.endif_exited:
 	jmp .start_game_loop
 
-; Save all registers to the stack
-; (except bp)
-push_registers:
-	pop bp ; bp = return address
+; put the address to call in bp.
+; pushes and pops all registers.
+call_wrapper:
+	; push registers
 	push ax
 	push bx
 	push cx
 	push dx
 	push si
 	push di
-	jmp bp
 
-; Load all registers from the stack
-; (except bp)
-pop_registers:
-	pop bp ; bp = return address
+	; stack = retadd
+	mov word [0x8192], bp
+	; stack = retadd, 6
+	push wrapper_exit_location
+	; stack = retadd, 6, $ + 2
+	jmp word [0x8192]
+	; stack = retadd, 6
+	wrapper_exit_location:
+	; pop registers
 	pop di
 	pop si
 	pop dx
 	pop cx
 	pop bx
 	pop ax
-	jmp bp
+
+	; stack = retadd
+	ret
 
 ; void print_string(char* string)
 ; Prints the screen string to terminal.
@@ -315,22 +319,13 @@ check_escape:
 
 ; Entry point for the pong game.
 pong_main:
-	call push_registers
-	call clear_screen
-	call pop_registers
-
 	.loop:
-		call push_registers
-		call check_escape
-		call pop_registers
+		mov bp, check_escape
+		call call_wrapper
 	jmp .loop
 
 ; Entry point for games not yet constructed.
 na_main:
-	call push_registers
-	call clear_screen
-	call pop_registers
-
 	; move cursor to middle of screen
 	mov ah, 0x02 ; cursor pos
 	mov bx, 0x00 ; page num
@@ -342,13 +337,12 @@ na_main:
 
 	; print na game message
 	mov di, NA_GAME_MSG
-	call push_registers
-	call print_string
-	call pop_registers
 
+	mov bp, print_string
+	call call_wrapper
+	
 	.loop:
-		call push_registers
-		call check_escape
-		call pop_registers
+		mov bp, check_escape
+		call call_wrapper
 	jmp .loop
 
