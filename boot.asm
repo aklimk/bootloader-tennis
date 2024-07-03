@@ -16,14 +16,23 @@ section .data
 	TITLE_THREE db "PLCEHLDR"
 	TITLES dw TITLE_ONE, TITLE_TWO, TITLE_THREE
 	TITLE_PADDINGS db 8, 8, 5, 5, 6, 6
-	NA_GAME_MSG db "Under Construction", 0
-	NA_GAME_MSG_PADDING db 32 
+	NA_GAME_MSG db "Roadworks", 0
+	NA_GAME_MSG_PADDING db 35 
 	GAME_ENTRY_POINTS dw pong_main, na_main, na_main
 
 section .bss
 	SCREEN_STRING resb SCREEN_WIDTH * SCREEN_HEIGHT + (SCREEN_HEIGHT * 2)
 	MENU_EXITED resb 1
 	SELECTION resb 1
+
+	; Pong Data
+	LEFT_PADDLE_Y resb 1
+	LEFT_PADDLE_SCORE resb 1
+	RIGHT_PADDLE_Y resb 1
+	RIGHT_PADDLE_SCORE resb 1
+	BALL_X resb 1
+	BALL_Y resb 1
+	BALL_VELOCITY resb 1 
 
 section .text
 setup_stack:
