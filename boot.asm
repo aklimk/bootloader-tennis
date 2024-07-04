@@ -22,7 +22,6 @@ section .data
 
 section .bss
 	SCREEN_STRING resb SCREEN_WIDTH * SCREEN_HEIGHT + (SCREEN_HEIGHT * 2)
-	MENU_EXITED resb 1
 	SELECTION resb 1
 
 	; Pong Data
@@ -41,29 +40,16 @@ setup_stack:
 	mov sp, STACK_SIZE
 
 main:
+	; reset to menu
 	mov ax, 0x03
 	int 0x10
 
-	mov byte [MENU_EXITED], 0
 	.start_game_loop:
 		call clear_screen
 		call fill_screen_string
 		mov di, SCREEN_STRING
 		call print_string
 		call update_selection
-
-		.if_exited:
-		cmp byte [MENU_EXITED], 1
-		jne .endif_exited
-		; MENU_EXITED == 1
-			mov bl, [SELECTION]
-			shl bl, 1 ; di = 2 * SELECTION
-			mov bx, [GAME_ENTRY_POINTS + bx]
-			push bx
-			call clear_screen
-			pop bx
-			jmp bx
-		.endif_exited:
 	jmp .start_game_loop
 
 ; void print_string(char* string)
@@ -141,8 +127,13 @@ update_selection:
 	cmp ah, 0x1C
 	jne .endif_enter
 	; scancode = 0x1C 
-		; Exit menu flag true
-		mov byte [MENU_EXITED], 1
+		mov bl, [SELECTION]
+		shl bl, 1 ; di = 2 * SELECTION
+		mov bx, [GAME_ENTRY_POINTS + bx]
+		push bx
+		call clear_screen
+		pop bx
+		jmp bx
 	.endif_enter:
 	ret
 
