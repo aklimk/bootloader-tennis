@@ -33,8 +33,8 @@ section .bss
 	BALL_X resb 1
 	BALL_Y resb 1
 	BALL_VELOCITY resb 1 
-section .text
 
+section .text
 setup_stack:
 	mov di, STACK_BOTTOM
 	mov ss, di
@@ -156,16 +156,9 @@ fill_screen_string:
 	mov si, TITLE_PADDINGS
 
 	mov ax, 0
-	.start_loop_y:
-	cmp ax, SCREEN_HEIGHT
-	je .end_loop_y
-	; <<<for(int y = 0; y < SCREEN_HEIGHT;>>> y++)
-
+	.loop_y:
 		mov bx, 0
-		.start_loop_x:
-		cmp bx, SCREEN_WIDTH
-		je .end_loop_x
-		; <<<for(int x = 0; x < SCREEN_WIDTH;>>> x++)
+		.loop_x:
 			; Create Border
 			mov cl, 0x20 ; Space
 			.if_top_boundry:
@@ -251,10 +244,9 @@ fill_screen_string:
 			mov [di], cl
 			inc di
 
-		; for(int x = 0; x < SCREEN_WIDTH; <<<x++)>>>
 		inc bx
-		jmp .start_loop_x
-		.end_loop_x:
+		cmp bx, SCREEN_WIDTH
+		jl .loop_x
 
 		; x == SCREEN_WIDTH	
 		; add \r\n to screen_string
@@ -272,11 +264,9 @@ fill_screen_string:
 				add si, 2
 		.endif_text_2:
 		
-
-	; for(int y = 0; y < SCREEN_HEIGHT; <<<y++)>>>
 	inc ax
-	jmp .start_loop_y
-	.end_loop_y:
+	cmp ax, SCREEN_HEIGHT
+	jl .loop_y
 
 	; y == SCREEN_HEIGHT
 	ret
