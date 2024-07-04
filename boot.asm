@@ -12,10 +12,10 @@ STACK_BOTTOM equ 0x8000
 ; stack : 0xFFFE (incl) downwards
 section .data
 	TITLE_ONE db "PONG"
-	TITLE_TWO db "DEMO123"
+	TITLE_TWO db "DEMO12"
 	TITLE_THREE db "PLCEHLDR"
 	TITLES dw TITLE_ONE, TITLE_TWO, TITLE_THREE
-	TITLE_PADDINGS db 8, 8, 5, 5, 6, 6
+	TITLE_PADDINGS db 8, 8, 7, 7, 6, 6
 	NA_GAME_MSG db "Roadworks", 0
 	NA_GAME_MSG_PADDING db 35 
 	GAME_ENTRY_POINTS dw pong_main, na_main, na_main
@@ -373,7 +373,6 @@ na_main:
 	mov bx, 0x00 ; page num
 	; row
 	mov dl, [NA_GAME_MSG_PADDING]
-	add dl, 1
 	mov dh, 12 ; column
 	int 0x10 ; video settings
 
