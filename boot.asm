@@ -45,7 +45,6 @@ main:
 	int 0x10
 
 	mov byte [MENU_EXITED], 0
-	mov di, SCREEN_STRING
 	.start_game_loop:
 		call clear_screen
 		call fill_screen_string
@@ -106,32 +105,35 @@ update_selection:
 	; High = scan, low = ascii
 	; < = 0x4B00, > = 0x4D00
 	; ^ = 0x4800, dwn = 0x5000
+	mov bl, [SELECTION]
 	.if_up:
 	cmp ah, 0x48
 	jne .if_down
 	; scancode = 0x48
-		sub byte [SELECTION], 1
+		sub bl, 1
 	.if_down:
 	cmp ah, 0x50
 	jne .endif_keycode
 	; scancode = 0x50
-		add byte [SELECTION], 1
+		add bl, 1
 	.endif_keycode:
 
 	; Make sure SELECTION stays in a valid range
 	.if_selection_over:
-	cmp byte [SELECTION], NUM_TITLES
+	cmp bl, NUM_TITLES
 	jl .if_selection_under
 	; SELECTION >= NUM_TITLES
 		; SELECTION = NUM_TITLES - 1
-		mov byte [SELECTION], NUM_TITLES
-		sub byte [SELECTION], 1 
+		mov bl, NUM_TITLES
+		sub bl, 1 
 	.if_selection_under:
-	cmp byte [SELECTION], 0
+	cmp bl, 0
 	jge .endif_selection
 	; SELECTION < 0
-		mov byte [SELECTION], 0
+		mov bl, 0
 	.endif_selection:
+
+	mov [SELECTION], bl
 
 	; Detect enter keypress
 	; ENTER = 0x1C0D
@@ -162,22 +164,22 @@ fill_screen_string:
 			; Create Border
 			mov cl, 0x20 ; Space
 			.if_top_boundry:
-			cmp ax, 0
+			cmp al, 0
 			jne .if_bottom_boundry
 			; if (y == 0)
 				mov cl, 0x23 ; hash
 			.if_bottom_boundry:
-			cmp ax, SCREEN_HEIGHT - 1
+			cmp al, SCREEN_HEIGHT - 1
 			jne .if_left_boundry
 			; if (y == SCREEN_HEIGHT - 1)
 				mov cl, 0x23 ; hash
 			.if_left_boundry:
-			cmp bx, 0
+			cmp bl, 0
 			jne .if_right_boundry
 			; if (x == 0)
 				mov cl, 0x23 ; hash
 			.if_right_boundry:
-			cmp bx, SCREEN_WIDTH - 1
+			cmp bl, SCREEN_WIDTH - 1
 			jne .endif_boundry
 			; if (x == SCREEN_WIDTH - 1)
 				mov cl, 0x23 ; hash
@@ -187,13 +189,13 @@ fill_screen_string:
 			; Menu Rendering
 			; char ">" rendering
 			.if_selector_x:
-			mov dx, [SELECTION]
-			add dx, 2
-			cmp ax, dx
+			mov dl, [SELECTION]
+			add dl, 2
+			cmp al, dl
 			jne .endif_selector
 			; if (y == SELECTION + 2)
 				.if_selector_y:
-				cmp bx, 2
+				cmp bl, 2
 				jne .endif_selector
 				; if (x == 2)
 					mov cl, 0x3E ; >
@@ -201,11 +203,11 @@ fill_screen_string:
 			
 			; title rendering
 			.if_text_y_gt:
-			cmp ax, 1
+			cmp al, 1
 			jle .end_text_if
 			; if (y > 1)
 				.if_text_y_le:
-				cmp ax, NUM_TITLES + 1
+				cmp al, NUM_TITLES + 1
 				jg .end_text_if
 				; if (y <= NUM_TITLES + 1)
 					.if_text_x_gt:
@@ -213,7 +215,7 @@ fill_screen_string:
 					jb .end_text_if
 					; if (x > paddings[0])
 						.if_text_x_2:
-						mov dx, SCREEN_WIDTH
+						mov dl, SCREEN_WIDTH
 						sub dl, [si + 1]
 						cmp bl, dl
 						jae .end_text_if
@@ -230,7 +232,7 @@ fill_screen_string:
 							mov di, [TITLES + di] ; bp = GAMES[y - 2]
 						
 							; GAMES[y - 2][x - paddings[0]]
-							mov dx, bx ; dx = x
+							mov dl, bl ; dx = x
 							sub dl, [si] ; dx = x - paddings[0]
 							add di, dx ; bp = GAMES[y - 2] + (x - paddings[0])
 	
@@ -244,8 +246,8 @@ fill_screen_string:
 			mov [di], cl
 			inc di
 
-		inc bx
-		cmp bx, SCREEN_WIDTH
+		inc bl
+		cmp bl, SCREEN_WIDTH
 		jl .loop_x
 
 		; x == SCREEN_WIDTH	
@@ -256,7 +258,7 @@ fill_screen_string:
 		; increment padding array to next padding pair
 		; iff currently on a title row
 		.if_text_y_gt_2:
-			cmp ax, 1
+			cmp al, 1
 			jle .endif_text_2
 			; y > 1
 			; don't need to check y < GAMES_COUNT as the
@@ -264,8 +266,8 @@ fill_screen_string:
 				add si, 2
 		.endif_text_2:
 		
-	inc ax
-	cmp ax, SCREEN_HEIGHT
+	inc al
+	cmp al, SCREEN_HEIGHT
 	jl .loop_y
 
 	; y == SCREEN_HEIGHT
@@ -323,14 +325,14 @@ pong_main:
 					cmp dx, [BALL_X]
 					jg .end_ball_if
 						.if_ball_y_gt:
-						mov dx, ax
-						add dx, 4
-						cmp dx, [BALL_Y]
+						mov dl, al
+						add dl, 4
+						cmp dl, [BALL_Y]
 						jl .end_ball_if
 							.if_ball_y_lt:
-							mov dx, ax
-							sub dx, 4
-							cmp dx, [BALL_Y]
+							mov dl, al
+							sub dl, 4
+							cmp dl, [BALL_Y]
 							jg .end_ball_if
 								mov cl, 0x0F
 				.end_ball_if:
@@ -338,25 +340,26 @@ pong_main:
 
 				; Left Paddle Rendering
 				.if_lpaddle_x_gt:
-				cmp bx, 15
+				cmp bx, 10
 				jl .endif_lpaddle
 					.if_lpaddle_x_lt:
-					cmp bx, 25
+					cmp bx, 14
 					jg .endif_lpaddle
 						.if_lpaddle_y_gt:
-						mov dx, ax
-						add dx, 4
-						cmp dx, [LEFT_PADDLE_Y]
+						mov dl, al
+						add dl, 20
+						cmp dl, [LEFT_PADDLE_Y]
 						jl .endif_lpaddle
 							.if_lpaddle_y_lt:
-							mov dx, ax
-							sub dx, 4
-							cmp dx, [LEFT_PADDLE_Y]
+							mov dl, al
+							sub dl, 20
+							cmp dl, [LEFT_PADDLE_Y]
 							jg .endif_lpaddle
 								mov cl, 0x0F
 				.endif_lpaddle:
 
 				; Right Paddle Rendering
+
 				.if_rpaddle_x_gt:
 				.if_rpaddle_x_lt:
 				.if_rpaddle_y_gt:
@@ -366,10 +369,10 @@ pong_main:
 				; Render Pixel
 				mov [es:di], cl
 				inc di
-				inc bx
-				cmp bx, 320
+			inc bx
+			cmp bx, 320
 			jl .x_loop
-		inc ax
+		inc al
 		cmp ax, 200
 		jl .y_loop
 		; End Rendering
