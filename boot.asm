@@ -4,12 +4,12 @@
 SCREEN_WIDTH equ 20
 SCREEN_HEIGHT equ 20
 NUM_TITLES equ 3
-STACK_TOP equ 0xFFFF
-STACK_BOTTOM equ 0xAAAA
+STACK_SIZE equ 0xAAAA
+STACK_BOTTOM equ 0x8000
 
 ; txt + data + bss : 0x7C00 (incl) - 0x7FFF (incl)
 ; heap : 0x8000 (incl) upwards
-; stack : 0xFFFF (incl) downwards
+; stack : 0xFFFE (incl) downwards
 section .data
 	TITLE_ONE db "PONG"
 	TITLE_TWO db "DEMO-TITLE"
@@ -33,14 +33,17 @@ section .bss
 	BALL_X resb 1
 	BALL_Y resb 1
 	BALL_VELOCITY resb 1 
-
 section .text
+
 setup_stack:
 	mov di, STACK_BOTTOM
 	mov ss, di
-	mov sp, STACK_TOP
+	mov sp, STACK_SIZE
 
 main:
+	mov ax, 0x03
+	int 0x10
+
 	mov byte [MENU_EXITED], 0
 	mov di, SCREEN_STRING
 	.start_game_loop:
@@ -297,8 +300,37 @@ check_escape:
 
 ; Entry point for the pong game.
 pong_main:
+	; Change video mode to graphical
+	; 320x200
+	mov ax, 0x13
+	int 0x10
+
+	; Set video memory area
+	; Memory is column major order
+	mov ax, 0xA000
+	mov es, ax
+
 	.loop:
 		call check_escape
+
+		; Start Rendering
+		mov cl, 0x0F
+		mov di, 0
+
+		mov ax, 0
+		.y_loop:
+			mov bx, 0
+			.x_loop:
+			mov [es:di], cl
+			inc di
+			inc bx
+			cmp bx, 320
+			jl .x_loop
+		inc ax
+		cmp ax, 200
+		jl .y_loop
+		; End Rendering
+
 	jmp .loop
 
 ; Entry point for games not yet constructed.
