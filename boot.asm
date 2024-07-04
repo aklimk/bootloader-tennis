@@ -337,8 +337,33 @@ pong_main:
 
 
 				; Left Paddle Rendering
-				; Right Paddle Rendering
+				.if_lpaddle_x_gt:
+				cmp bx, 15
+				jl .endif_lpaddle
+					.if_lpaddle_x_lt:
+					cmp bx, 25
+					jg .endif_lpaddle
+						.if_lpaddle_y_gt:
+						mov dx, ax
+						add dx, 4
+						cmp dx, [LEFT_PADDLE_Y]
+						jl .endif_lpaddle
+							.if_lpaddle_y_lt:
+							mov dx, ax
+							sub dx, 4
+							cmp dx, [LEFT_PADDLE_Y]
+							jg .endif_lpaddle
+								mov cl, 0x0F
+				.endif_lpaddle:
 
+				; Right Paddle Rendering
+				.if_rpaddle_x_gt:
+				.if_rpaddle_x_lt:
+				.if_rpaddle_y_gt:
+				.if_rpaddle_y_lt:
+				.endif_rpaddle:
+				
+				; Render Pixel
 				mov [es:di], cl
 				inc di
 				inc bx
