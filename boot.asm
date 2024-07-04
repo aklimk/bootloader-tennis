@@ -314,17 +314,45 @@ pong_main:
 		call check_escape
 
 		; Start Rendering
-		mov cl, 0x0F
 		mov di, 0
-
 		mov ax, 0
 		.y_loop:
 			mov bx, 0
 			.x_loop:
-			mov [es:di], cl
-			inc di
-			inc bx
-			cmp bx, 320
+				mov cl, 0x00 ; Nothing
+
+				; Ball Rendering
+				.if_ball_x_gt:
+				mov dx, bx
+				add dx, 4
+				cmp dx, [BALL_X]
+				jl .end_ball_if
+					.if_ball_x_lt:
+					mov dx, bx
+					sub dx, 4
+					cmp dx, [BALL_X]
+					jg .end_ball_if
+						.if_ball_y_gt:
+						mov dx, ax
+						add dx, 4
+						cmp dx, [BALL_Y]
+						jl .end_ball_if
+							.if_ball_y_lt:
+							mov dx, ax
+							sub dx, 4
+							cmp dx, [BALL_Y]
+							jg .end_ball_if
+								mov cl, 0x0F
+				.end_ball_if:
+
+
+				; Left Paddle Rendering
+				; Right Paddle Rendering
+
+				mov [es:di], cl
+				inc di
+				inc bx
+				cmp bx, 320
 			jl .x_loop
 		inc ax
 		cmp ax, 200
