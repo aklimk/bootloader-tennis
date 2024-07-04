@@ -44,12 +44,188 @@ main:
 	mov ax, 0x03
 	int 0x10
 
+	; menu loop
 	.start_game_loop:
+		; Clear Menu
 		call clear_screen
-		call fill_screen_string
+		
+		; Menu Rendering Start
+		mov di, SCREEN_STRING
+		mov si, TITLE_PADDINGS
+
+		mov ax, 0
+		.loop_y:
+			mov bx, 0
+			.loop_x:
+				; Create Border
+				mov cl, 0x20 ; Space
+				.if_top_boundry:
+				cmp al, 0
+				jne .if_bottom_boundry
+				; if (y == 0)
+					mov cl, 0x23 ; hash
+				.if_bottom_boundry:
+				cmp al, SCREEN_HEIGHT - 1
+				jne .if_left_boundry
+				; if (y == SCREEN_HEIGHT - 1)
+					mov cl, 0x23 ; hash
+				.if_left_boundry:
+				cmp bl, 0
+				jne .if_right_boundry
+				; if (x == 0)
+					mov cl, 0x23 ; hash
+				.if_right_boundry:
+				cmp bl, SCREEN_WIDTH - 1
+				jne .endif_boundry
+				; if (x == SCREEN_WIDTH - 1)
+					mov cl, 0x23 ; hash
+				.endif_boundry:
+				
+		
+				; Menu Rendering
+				; char ">" rendering
+				.if_selector_x:
+				mov dl, [SELECTION]
+				add dl, 2
+				cmp al, dl
+				jne .endif_selector
+				; if (y == SELECTION + 2)
+					.if_selector_y:
+					cmp bl, 2
+					jne .endif_selector
+					; if (x == 2)
+						mov cl, 0x3E ; >
+				.endif_selector:
+				
+				; title rendering
+				.if_text_y_gt:
+				cmp al, 1
+				jle .end_text_if
+				; if (y > 1)
+					.if_text_y_le:
+					cmp al, NUM_TITLES + 1
+					jg .end_text_if
+					; if (y <= NUM_TITLES + 1)
+						.if_text_x_gt:
+						cmp bl, [si]
+						jb .end_text_if
+						; if (x > paddings[0])
+							.if_text_x_2:
+							mov dl, SCREEN_WIDTH
+							sub dl, [si + 1]
+							cmp bl, dl
+							jae .end_text_if
+							; if (x <= SCREEN_WIDTH - paddings[1])
+								; Render Text
+								push di
+								; GAMES[y - 2]
+								mov di, ax 
+								sub di, 2 ; bp = y - 2
+								; GAMES elem size is 16 bits, thus
+								; bp = 2(y - 2) to index correctly
+								shl di, 1 
+								; bp = char*
+								mov di, [TITLES + di] ; bp = GAMES[y - 2]
+							
+								; GAMES[y - 2][x - paddings[0]]
+								mov dl, bl ; dx = x
+								sub dl, [si] ; dx = x - paddings[0]
+								add di, dx ; bp = GAMES[y - 2] + (x - paddings[0])
+		
+								; derefernce using si instead of bp, as bp uses
+								; ss instead of ds 
+								mov cl, [di] ; cl = GAMES[y - 2][x - paddings[0]]
+								pop di	
+				.end_text_if:
+				
+				; set char
+				mov [di], cl
+				inc di
+
+			inc bl
+			cmp bl, SCREEN_WIDTH
+			jl .loop_x
+
+			; x == SCREEN_WIDTH	
+			; add \r\n to screen_string
+			mov word [di], 0x0A0D
+			add di, 2
+			
+			; increment padding array to next padding pair
+			; iff currently on a title row
+			.if_text_y_gt_2:
+				cmp al, 1
+				jle .endif_text_2
+				; y > 1
+				; don't need to check y < GAMES_COUNT as the
+				; padding will never be dereferenced
+					add si, 2
+			.endif_text_2:
+			
+		inc al
+		cmp al, SCREEN_HEIGHT
+		jl .loop_y
+
+		; y == SCREEN_HEIGHT
+		; Menu Rendering Stop
+
+		; Display Rendered Menu
 		mov di, SCREEN_STRING
 		call print_string
-		call update_selection
+
+		; Update Menu from Input Start
+		mov ah, 0x00 ; read key press
+		int 0x16 ; keyboard io interupt
+		; ah = scan code, al = ascii
+		; High = scan, low = ascii
+		; < = 0x4B00, > = 0x4D00
+		; ^ = 0x4800, dwn = 0x5000
+		mov bl, [SELECTION]
+		.if_up:
+		cmp ah, 0x48
+		jne .if_down
+		; scancode = 0x48
+			sub bl, 1
+		.if_down:
+		cmp ah, 0x50
+		jne .endif_keycode
+		; scancode = 0x50
+			add bl, 1
+		.endif_keycode:
+
+		; Make sure SELECTION stays in a valid range
+		.if_selection_over:
+		cmp bl, NUM_TITLES
+		jl .if_selection_under
+		; SELECTION >= NUM_TITLES
+			; SELECTION = NUM_TITLES - 1
+			mov bl, NUM_TITLES
+			sub bl, 1 
+		.if_selection_under:
+		cmp bl, 0
+		jge .endif_selection
+		; SELECTION < 0
+			mov bl, 0
+		.endif_selection:
+
+		mov [SELECTION], bl
+
+		; Detect enter keypress
+		; ENTER = 0x1C0D
+		.if_enter:
+		cmp ah, 0x1C
+		jne .endif_enter
+		; scancode = 0x1C 
+			mov bl, [SELECTION]
+			shl bl, 1 ; di = 2 * SELECTION
+			mov bx, [GAME_ENTRY_POINTS + bx]
+			push bx
+			call clear_screen
+			pop bx
+			jmp bx
+		.endif_enter:
+		; Update Menu from Input Stop
+
 	jmp .start_game_loop
 
 ; void print_string(char* string)
@@ -83,186 +259,6 @@ clear_screen:
 	int 0x10 ; video services
 	ret
 
-; Reads key from bios interupt, if its wasd, update selection.
-update_selection:
-	mov ah, 0x00 ; read key press
-	int 0x16 ; keyboard io interupt
-	; ah = scan code, al = ascii
-	; High = scan, low = ascii
-	; < = 0x4B00, > = 0x4D00
-	; ^ = 0x4800, dwn = 0x5000
-	mov bl, [SELECTION]
-	.if_up:
-	cmp ah, 0x48
-	jne .if_down
-	; scancode = 0x48
-		sub bl, 1
-	.if_down:
-	cmp ah, 0x50
-	jne .endif_keycode
-	; scancode = 0x50
-		add bl, 1
-	.endif_keycode:
-
-	; Make sure SELECTION stays in a valid range
-	.if_selection_over:
-	cmp bl, NUM_TITLES
-	jl .if_selection_under
-	; SELECTION >= NUM_TITLES
-		; SELECTION = NUM_TITLES - 1
-		mov bl, NUM_TITLES
-		sub bl, 1 
-	.if_selection_under:
-	cmp bl, 0
-	jge .endif_selection
-	; SELECTION < 0
-		mov bl, 0
-	.endif_selection:
-
-	mov [SELECTION], bl
-
-	; Detect enter keypress
-	; ENTER = 0x1C0D
-	.if_enter:
-	cmp ah, 0x1C
-	jne .endif_enter
-	; scancode = 0x1C 
-		mov bl, [SELECTION]
-		shl bl, 1 ; di = 2 * SELECTION
-		mov bx, [GAME_ENTRY_POINTS + bx]
-		push bx
-		call clear_screen
-		pop bx
-		jmp bx
-	.endif_enter:
-	ret
-
-
-; void fill_screen_string(char* screen_string, int selection, int* paddings)
-; Renders the current menu state to screen_string.
-; Args: 
-;     none
-; Returns:
-;	  none
-fill_screen_string:
-	mov di, SCREEN_STRING
-	mov si, TITLE_PADDINGS
-
-	mov ax, 0
-	.loop_y:
-		mov bx, 0
-		.loop_x:
-			; Create Border
-			mov cl, 0x20 ; Space
-			.if_top_boundry:
-			cmp al, 0
-			jne .if_bottom_boundry
-			; if (y == 0)
-				mov cl, 0x23 ; hash
-			.if_bottom_boundry:
-			cmp al, SCREEN_HEIGHT - 1
-			jne .if_left_boundry
-			; if (y == SCREEN_HEIGHT - 1)
-				mov cl, 0x23 ; hash
-			.if_left_boundry:
-			cmp bl, 0
-			jne .if_right_boundry
-			; if (x == 0)
-				mov cl, 0x23 ; hash
-			.if_right_boundry:
-			cmp bl, SCREEN_WIDTH - 1
-			jne .endif_boundry
-			; if (x == SCREEN_WIDTH - 1)
-				mov cl, 0x23 ; hash
-			.endif_boundry:
-			
-	
-			; Menu Rendering
-			; char ">" rendering
-			.if_selector_x:
-			mov dl, [SELECTION]
-			add dl, 2
-			cmp al, dl
-			jne .endif_selector
-			; if (y == SELECTION + 2)
-				.if_selector_y:
-				cmp bl, 2
-				jne .endif_selector
-				; if (x == 2)
-					mov cl, 0x3E ; >
-			.endif_selector:
-			
-			; title rendering
-			.if_text_y_gt:
-			cmp al, 1
-			jle .end_text_if
-			; if (y > 1)
-				.if_text_y_le:
-				cmp al, NUM_TITLES + 1
-				jg .end_text_if
-				; if (y <= NUM_TITLES + 1)
-					.if_text_x_gt:
-					cmp bl, [si]
-					jb .end_text_if
-					; if (x > paddings[0])
-						.if_text_x_2:
-						mov dl, SCREEN_WIDTH
-						sub dl, [si + 1]
-						cmp bl, dl
-						jae .end_text_if
-						; if (x <= SCREEN_WIDTH - paddings[1])
-							; Render Text
-							push di
-							; GAMES[y - 2]
-							mov di, ax 
-							sub di, 2 ; bp = y - 2
-							; GAMES elem size is 16 bits, thus
-							; bp = 2(y - 2) to index correctly
-							shl di, 1 
-							; bp = char*
-							mov di, [TITLES + di] ; bp = GAMES[y - 2]
-						
-							; GAMES[y - 2][x - paddings[0]]
-							mov dl, bl ; dx = x
-							sub dl, [si] ; dx = x - paddings[0]
-							add di, dx ; bp = GAMES[y - 2] + (x - paddings[0])
-	
-							; derefernce using si instead of bp, as bp uses
-							; ss instead of ds 
-							mov cl, [di] ; cl = GAMES[y - 2][x - paddings[0]]
-							pop di	
-			.end_text_if:
-			
-			; set char
-			mov [di], cl
-			inc di
-
-		inc bl
-		cmp bl, SCREEN_WIDTH
-		jl .loop_x
-
-		; x == SCREEN_WIDTH	
-		; add \r\n to screen_string
-		mov word [di], 0x0A0D
-		add di, 2
-		
-		; increment padding array to next padding pair
-		; iff currently on a title row
-		.if_text_y_gt_2:
-			cmp al, 1
-			jle .endif_text_2
-			; y > 1
-			; don't need to check y < GAMES_COUNT as the
-			; padding will never be dereferenced
-				add si, 2
-		.endif_text_2:
-		
-	inc al
-	cmp al, SCREEN_HEIGHT
-	jl .loop_y
-
-	; y == SCREEN_HEIGHT
-	ret
 
 ; Non block escape check to go 
 ; back to the menu.
