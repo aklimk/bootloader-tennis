@@ -61,22 +61,22 @@ main:
 				mov cl, 0x20 ; Space
 				.if_top_boundry:
 				cmp al, 0
-				jne .if_bottom_boundry
+				jne SHORT .if_bottom_boundry
 				; if (y == 0)
 					mov cl, 0x23 ; hash
 				.if_bottom_boundry:
 				cmp al, SCREEN_HEIGHT - 1
-				jne .if_left_boundry
+				jne SHORT .if_left_boundry
 				; if (y == SCREEN_HEIGHT - 1)
 					mov cl, 0x23 ; hash
 				.if_left_boundry:
 				cmp bl, 0
-				jne .if_right_boundry
+				jne SHORT .if_right_boundry
 				; if (x == 0)
 					mov cl, 0x23 ; hash
 				.if_right_boundry:
 				cmp bl, SCREEN_WIDTH - 1
-				jne .endif_boundry
+				jne SHORT .endif_boundry
 				; if (x == SCREEN_WIDTH - 1)
 					mov cl, 0x23 ; hash
 				.endif_boundry:
@@ -88,11 +88,11 @@ main:
 				mov dl, [SELECTION]
 				add dl, 2
 				cmp al, dl
-				jne .endif_selector
+				jne SHORT .endif_selector
 				; if (y == SELECTION + 2)
 					.if_selector_y:
 					cmp bl, 2
-					jne .endif_selector
+					jne SHORT .endif_selector
 					; if (x == 2)
 						mov cl, 0x3E ; >
 				.endif_selector:
@@ -100,21 +100,21 @@ main:
 				; title rendering
 				.if_text_y_gt:
 				cmp al, 1
-				jle .end_text_if
+				jle SHORT .end_text_if
 				; if (y > 1)
 					.if_text_y_le:
 					cmp al, NUM_TITLES + 1
-					jg .end_text_if
+					jg SHORT .end_text_if
 					; if (y <= NUM_TITLES + 1)
 						.if_text_x_gt:
 						cmp bl, [si]
-						jb .end_text_if
+						jb SHORT .end_text_if
 						; if (x > paddings[0])
 							.if_text_x_2:
 							mov dl, SCREEN_WIDTH
 							sub dl, [si + 1]
 							cmp bl, dl
-							jae .end_text_if
+							jae SHORT .end_text_if
 							; if (x <= SCREEN_WIDTH - paddings[1])
 								; Render Text
 								push di
@@ -144,7 +144,7 @@ main:
 
 			inc bl
 			cmp bl, SCREEN_WIDTH
-			jl .loop_x
+			jl SHORT .loop_x
 
 			; x == SCREEN_WIDTH	
 			; add \r\n to screen_string
@@ -155,7 +155,7 @@ main:
 			; iff currently on a title row
 			.if_text_y_gt_2:
 				cmp al, 1
-				jle .endif_text_2
+				jle SHORT .endif_text_2
 				; y > 1
 				; don't need to check y < GAMES_COUNT as the
 				; padding will never be dereferenced
@@ -164,7 +164,7 @@ main:
 			
 		inc al
 		cmp al, SCREEN_HEIGHT
-		jl .loop_y
+		jl SHORT .loop_y
 
 		; y == SCREEN_HEIGHT
 		; Menu Rendering Stop
@@ -183,12 +183,12 @@ main:
 		mov bl, [SELECTION]
 		.if_up:
 		cmp ah, 0x48
-		jne .if_down
+		jne SHORT .if_down
 		; scancode = 0x48
 			sub bl, 1
 		.if_down:
 		cmp ah, 0x50
-		jne .endif_keycode
+		jne SHORT .endif_keycode
 		; scancode = 0x50
 			add bl, 1
 		.endif_keycode:
@@ -196,14 +196,14 @@ main:
 		; Make sure SELECTION stays in a valid range
 		.if_selection_over:
 		cmp bl, NUM_TITLES
-		jl .if_selection_under
+		jl SHORT .if_selection_under
 		; SELECTION >= NUM_TITLES
 			; SELECTION = NUM_TITLES - 1
 			mov bl, NUM_TITLES
 			sub bl, 1 
 		.if_selection_under:
 		cmp bl, 0
-		jge .endif_selection
+		jge SHORT .endif_selection
 		; SELECTION < 0
 			mov bl, 0
 		.endif_selection:
@@ -214,7 +214,7 @@ main:
 		; ENTER = 0x1C0D
 		.if_enter:
 		cmp ah, 0x1C
-		jne .endif_enter
+		jne SHORT .endif_enter
 		; scancode = 0x1C 
 			mov bl, [SELECTION]
 			shl bl, 1 ; di = 2 * SELECTION
@@ -226,7 +226,7 @@ main:
 		.endif_enter:
 		; Update Menu from Input Stop
 
-	jmp .start_game_loop
+	jmp NEAR .start_game_loop
 
 ; void print_string(char* string)
 ; Prints the screen string to terminal.
@@ -242,7 +242,7 @@ print_string:
 		int 0x10 ; video services
 	inc di
 	cmp byte [di], 0x00
-	jne .print_char
+	jne SHORT .print_char
 	ret
 
 ; void clear_screen()
@@ -265,15 +265,15 @@ clear_screen:
 check_escape:
 	mov ah, 0x01 ; keypress from buffer
 	int 0x16 ; keyboard input
-	jz .endif_escape
+	jz SHORT .endif_escape
 	; key buffer is not empty
 		.if_escape:
 		mov ah, 0x00
 		int 0x16
 		cmp ah, 0x01 ; ESC 
-		jne .endif_escape
+		jne SHORT .endif_escape
 		; scancode == 0x01
-			jmp main
+			jmp NEAR main
 		.endif_escape:
 	ret
 
@@ -305,22 +305,22 @@ pong_main:
 				mov dx, bx
 				add dx, 4
 				cmp dx, [BALL_X]
-				jl .end_ball_if
+				jl SHORT .end_ball_if
 					.if_ball_x_lt:
 					mov dx, bx
 					sub dx, 4
 					cmp dx, [BALL_X]
-					jg .end_ball_if
+					jg SHORT .end_ball_if
 						.if_ball_y_gt:
 						mov dl, al
 						add dl, 4
 						cmp dl, [BALL_Y]
-						jl .end_ball_if
+						jl SHORT .end_ball_if
 							.if_ball_y_lt:
 							mov dl, al
 							sub dl, 4
 							cmp dl, [BALL_Y]
-							jg .end_ball_if
+							jg SHORT .end_ball_if
 								mov cl, 0x0F
 				.end_ball_if:
 
@@ -328,20 +328,20 @@ pong_main:
 				; Left Paddle Rendering
 				.if_lpaddle_x_gt:
 				cmp bx, 10
-				jl .endif_lpaddle
+				jl SHORT .endif_lpaddle
 					.if_lpaddle_x_lt:
 					cmp bx, 14
-					jg .endif_lpaddle
+					jg SHORT .endif_lpaddle
 						.if_lpaddle_y_gt:
 						mov dl, al
 						add dl, 20
 						cmp dl, [LEFT_PADDLE_Y]
-						jl .endif_lpaddle
+						jl SHORT .endif_lpaddle
 							.if_lpaddle_y_lt:
 							mov dl, al
 							sub dl, 20
 							cmp dl, [LEFT_PADDLE_Y]
-							jg .endif_lpaddle
+							jg SHORT .endif_lpaddle
 								mov cl, 0x0F
 				.endif_lpaddle:
 
@@ -358,13 +358,13 @@ pong_main:
 				inc di
 			inc bx
 			cmp bx, 320
-			jl .x_loop
+			jl SHORT .x_loop
 		inc al
 		cmp ax, 200
-		jl .y_loop
+		jl SHORT .y_loop
 		; End Rendering
 
-	jmp .loop
+	jmp SHORT .loop
 
 ; Entry point for games not yet constructed.
 na_main:
@@ -382,5 +382,5 @@ na_main:
 
 	.loop:
 		call check_escape
-	jmp .loop
+	jmp SHORT .loop
 
