@@ -355,8 +355,7 @@ pong_main:
 				cmp dx, [BALL_X] ; 3B 16 XX XX
 				jl SHORT .end_ball_if ; 7C 23
 					.if_ball_x_lt:
-					mov dx, bx ; 89 DA
-					sub dx, 4 ; 83 EA 04
+					sub dx, 8 ; 83 EA 08
 					cmp dx, [BALL_X] ; 3B 16 XX XX
 					jg SHORT .end_ball_if ; 7F 18
 						.if_ball_y_gt:
@@ -365,13 +364,12 @@ pong_main:
 						cmp dl, [BALL_Y] ; 3A 16 XX XX
 						jl SHORT .end_ball_if ; 7C 0D
 							.if_ball_y_lt:
-							mov dl, al ; 88 C2
-							sub dl, 4 ; 80 EA 04
+							sub dl, 8 ; 80 EA 08
 							cmp dl, [BALL_Y] ; 3A 16 XX XX
 							jg SHORT .end_ball_if ; 7F 02
 								mov cl, 0x0F ; B1 0F
 				.end_ball_if:
-	; - SECTION 46B
+	; - SECTION 42B
 
 				; Left Paddle Rendering
 				.if_lpaddle_x_gt:
@@ -386,13 +384,12 @@ pong_main:
 						cmp dl, [LEFT_PADDLE_Y] ; 3A 16 XX XX
 						jl SHORT .endif_lpaddle ; 7C 0D
 							.if_lpaddle_y_lt:
-							mov dl, al ; 88 C2
-							sub dl, 20 ; 80 EA 14
+							sub dl, 40 ; 80 EA 28
 							cmp dl, [LEFT_PADDLE_Y] ; 3A 16 XX XX
 							jg SHORT .endif_lpaddle ; 7F 02
 								mov cl, 0x0F ; B1 0F
 				.endif_lpaddle:
-	; - SECTION 34B
+	; - SECTION 32B
 
 				; Right Paddle Rendering
 				.if_rpaddle_x_gt:
@@ -416,7 +413,7 @@ pong_main:
 
 	jmp SHORT .loop ; EB 8E
 	; - SECTION 4B
-; - SECTION TOTAL 123B
+; - SECTION TOTAL 117B
 
 ; Entry point for games not yet constructed.
 na_main:
