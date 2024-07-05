@@ -163,7 +163,7 @@ main:
 				mov [di], cl ; 88 0D
 				inc di ; 47
 
-			inc bl ; FE C3
+			inc bx ; 43 
 			cmp bl, SCREEN_WIDTH ; 80 FB 14
 			jl SHORT .loop_x ; 7C 9E
 
@@ -185,7 +185,7 @@ main:
 			.endif_text_2:
 	; - SECTION 7B
 			
-		inc al ; FE C0
+		inc ax ; 40
 		cmp al, SCREEN_HEIGHT ; 3C 14
 		jl SHORT .loop_y ; 7C 87
 	; - SECTION 6B
@@ -405,7 +405,7 @@ pong_main:
 			inc bx ; 43
 			cmp bx, 320 ; 81 FB 40 01
 			jl SHORT .x_loop ; 7C A3
-		inc al ; FE C0
+		inc ax ; 40
 		cmp ax, 200 ; 3D C8 00
 		jl SHORT .y_loop ; 7C 99
 		; End Rendering
