@@ -65,15 +65,15 @@ main:
 		mov di, SCREEN_STRING ; BF XX XX
 		mov si, TITLE_PADDINGS ; BE XX XX
 	; - SECTION 9B
-
-		mov ax, 0 ; B8 00 00
+	
+		xor ax, ax ; 31 C0
 		.loop_y:
-			mov bx, 0 ; BB 00 00
+			xor bx, bx ; 31 DB
 			.loop_x:
 
 				; cl = space
 				mov cl, 0x20 ; B1 20
-	; - SECTION 8B
+	; - SECTION 6B
 
 				; Create Border
 				.if_top_boundry:
@@ -200,7 +200,7 @@ main:
 
 		; Update Menu from Input Start
 		; read key press
-		mov ah, 0x00 ; B4 00
+		xor ah, ah ; 30 E4
 		; keyboard io interupt
 		int 0x16 ; CD 16
 	; - SECTION 4B
@@ -234,7 +234,7 @@ main:
 		cmp bl, 0 ; 80 FB 00
 		jge SHORT .endif_selection ; 7D 02
 		; SELECTION < 0
-			mov bl, 0 ; B3 00
+			xor bl, bl ; 30 DB
 		.endif_selection:
 
 		mov [SELECTION], bl ; 88 1E XX XX
@@ -257,7 +257,7 @@ main:
 		
 	jmp NEAR .start_game_loop ; E9 34 FF
 	; - SECTION 3B
-; - SECTION TOTAL 207B
+; - SECTION TOTAL 205B
 
 ; void print_string(char* string)
 ; Prints the screen string to terminal.
@@ -285,7 +285,7 @@ clear_screen:
 	; white foreground, black background
 	mov bx, 0x0700 ; BB 00 07
 	; upper left position
-	mov cx, 0x0000 ; B9 00 00
+	xor cx, cx ; 31 C9
 	; lower right position
 	mov dx, 0x184F ; BA 4F 18
 	; video services
@@ -293,13 +293,13 @@ clear_screen:
 	; set cursor position
 	mov ah, 0x02 ; B4 02
 	; page number
-	mov bh, 0 ; B7 00
+	xor bh, bh ; 30 FF
 	; row, col
-	mov dx, 0 ; BA 00 00
+	xor dx, dx ; 31 D2
 	; video services
 	int 0x10 ; CD 10
 	ret ; C3
-; - SECTION TOTAL 24B
+; - SECTION TOTAL 22B
 
 ; Non block escape check to go 
 ; back to the menu.
@@ -311,7 +311,7 @@ check_escape:
 	jz SHORT .endif_escape ; 74 0C
 	; key buffer is not empty
 		.if_escape:
-		mov ah, 0x00 ; B4 00
+		xor ah, ah ; 30 E4
 		int 0x16 ; CD 16
 		; ESC 
 		cmp ah, 0x01 ; 80 FC 01
@@ -339,14 +339,14 @@ pong_main:
 		call check_escape ; E8 XX XX
 
 		; Start Rendering
-		mov di, 0 ; BF 00 00
-		mov ax, 0 ; B8 00 00
+		xor di, di ; 31 FF
+		xor ax, ax ; 31 C0
 		.y_loop:
-			mov bx, 0 ; BB 00 00
+			xor bx, bx ; 31 DB
 			.x_loop:
 				; Nothing
-				mov cl, 0x00 ; B1 00
-	; - SECTION 14B
+				xor cl, cl ; 30 C9
+	; - SECTION 11B
 
 				; Ball Rendering
 				.if_ball_x_gt:
@@ -416,7 +416,7 @@ pong_main:
 
 	jmp SHORT .loop ; EB 8E
 	; - SECTION 4B
-; - SECTION TOTAL 126B
+; - SECTION TOTAL 123B
 
 ; Entry point for games not yet constructed.
 na_main:
@@ -424,7 +424,7 @@ na_main:
 	; cursor pos
 	mov ah, 0x02 ; B4 02
 	; page num
-	mov bx, 0x00 ; BB 00 00
+	xor bx, bx ; 31 DB
 	; row
 	mov dl, [NA_GAME_MSG_PADDING] ; 8A 16 XX XX
 	; column
@@ -439,5 +439,5 @@ na_main:
 	.loop:
 		call check_escape ; E8 XX XX
 	jmp SHORT .loop ; EB FB
-; - SECTION TOTAL 24B
+; - SECTION TOTAL 23B
 
