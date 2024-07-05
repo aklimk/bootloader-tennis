@@ -216,12 +216,10 @@ main:
 		cmp ah, 0x1C
 		jne SHORT .endif_enter
 		; scancode = 0x1C 
+			call clear_screen
 			mov bl, [SELECTION]
 			shl bl, 1 ; di = 2 * SELECTION
 			mov bx, [GAME_ENTRY_POINTS + bx]
-			push bx
-			call clear_screen
-			pop bx
 			jmp bx
 		.endif_enter:
 		; Update Menu from Input Stop
