@@ -199,8 +199,7 @@ main:
 		jl SHORT .if_selection_under
 		; SELECTION >= NUM_TITLES
 			; SELECTION = NUM_TITLES - 1
-			mov bl, NUM_TITLES
-			sub bl, 1 
+			mov bl, NUM_TITLES - 1
 		.if_selection_under:
 		cmp bl, 0
 		jge SHORT .endif_selection
