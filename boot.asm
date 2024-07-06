@@ -203,7 +203,9 @@ main:
 		xor ah, ah ; 30 E4
 		; keyboard io interupt
 		int 0x16 ; CD 16
-	; - SECTION 4B
+		
+		mov al, ah ; 88 E0
+	; - SECTION 6B
 
 		; ah = scan code, al = ascii
 		; High = scan, low = ascii
@@ -211,17 +213,17 @@ main:
 		; ^ = 0x4800, dwn = 0x5000
 		mov bl, [SELECTION] ; 8A 1E XX XX
 		.if_up:
-		cmp ah, 0x48 ; 80 FC 48
+		cmp al, 0x48 ; 3C 48
 		jne SHORT .if_down ; 75 03
 		; scancode = 0x48
 			sub bl, 1 ; 80 EB 01
 		.if_down:
-		cmp ah, 0x50 ; 80 FC 50
+		cmp al, 0x50 ; 3C 50
 		jne SHORT .endif_keycode ; 75 05
 		; scancode = 0x50
 			add bl, 1 ; 80 C3 01
 		.endif_keycode:
-	; - SECTION 20B
+	; - SECTION 18B
 
 		; Make sure SELECTION stays in a valid range
 		.if_selection_over:
@@ -243,7 +245,7 @@ main:
 		; Detect enter keypress
 		; ENTER = 0x1C0D
 		.if_enter:
-		cmp ah, 0x1C ; 80 FC 1C
+		cmp al, 0x1C ; 3C 1C
 		jne SHORT .endif_enter ; 75 0F
 		; scancode = 0x1C 
 			call clear_screen ; E8 1C 00
@@ -253,11 +255,11 @@ main:
 			jmp bx ; FF E3
 		.endif_enter:
 		; Update Menu from Input Stop
-	; - SECTION 20B	
+	; - SECTION 19B	
 		
 	jmp NEAR .start_game_loop ; E9 34 FF
 	; - SECTION 3B
-; - SECTION TOTAL 205B
+; - SECTION TOTAL 204B
 
 ; void print_string(char* string)
 ; Prints the screen string to terminal.
