@@ -103,7 +103,8 @@ main:
 				; ">" Char Rendering
 				.if_selector_x:
 				mov dl, [SELECTION] ; 8A 16 XX XX
-				add dl, 2 ; 80 C2 02
+				inc dx ; 42
+				inc dx ; 42
 				cmp al, dl ; 38 D0
 				jne SHORT .endif_selector ; 75 07
 				; if (y == SELECTION + 2)
@@ -141,7 +142,8 @@ main:
 
 								; GAMES[y - 2]
 								mov di, ax ; 89 C7
-								sub di, 2 ; 83 EF 02
+								dec di ; 4F
+								dec di ; 4F
 								; GAMES elem size is 16 bits, thus
 								; bp = 2(y - 2) to index correctly
 								shl di, 1 ; D1 E7
@@ -170,7 +172,8 @@ main:
 			; x == SCREEN_WIDTH	
 			; add \r\n to screen_string
 			mov word [di], 0x0A0D ; C7 05 0D 0A
-			add di, 2 ; 83 C7 02
+			inc di ; 47
+			inc di ; 47
 	; - SECTION 17B
 			
 			; increment padding array to next padding pair
@@ -181,7 +184,8 @@ main:
 				; y > 1
 				; don't need to check y < GAMES_COUNT as the
 				; padding will never be dereferenced
-					add si, 2 ; 83 C6 02
+					inc si ; 46
+					inc si ; 46
 			.endif_text_2:
 	; - SECTION 7B
 			
@@ -216,12 +220,12 @@ main:
 		cmp al, 0x48 ; 3C 48
 		jne SHORT .if_down ; 75 03
 		; scancode = 0x48
-			sub bl, 1 ; 80 EB 01
+			dec bx ; 4B
 		.if_down:
 		cmp al, 0x50 ; 3C 50
 		jne SHORT .endif_keycode ; 75 05
 		; scancode = 0x50
-			add bl, 1 ; 80 C3 01
+			inc bx ; 43
 		.endif_keycode:
 	; - SECTION 18B
 
