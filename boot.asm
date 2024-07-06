@@ -34,12 +34,12 @@ section .bss
 
 	; Pong Data
 	LEFT_PADDLE_Y resb 1
-	LEFT_PADDLE_SCORE resb 1
 	RIGHT_PADDLE_Y resb 1
-	RIGHT_PADDLE_SCORE resb 1
 	BALL_X resb 1
 	BALL_Y resb 1
 	BALL_VELOCITY resb 1 
+	LEFT_PADDLE_SCORE resb 1
+	RIGHT_PADDLE_SCORE resb 1
 ; SECTION TOTAL 0B
 
 section .text
@@ -349,23 +349,26 @@ pong_main:
 	; - SECTION 11B
 
 				; Ball Rendering
+				mov si, [BALL_X] ; 8B 36 XX XX
+				mov dl, [BALL_Y] ; 8A 16 XX XX
+
 				push ax ; 50
 				push bx ; 53
 				.if_ball_x_gt:
 				add bx, 4 ; 83 C3 04
-				cmp bx, [BALL_X] ; 3B 1E XX XX
-				jl SHORT .end_ball_if ; 7C 1B
+				cmp bx, si ; 39 F3
+				jl SHORT .end_ball_if ; 7C 15
 					.if_ball_x_lt:
 					sub bx, 8 ; 83 EB 08
-					cmp bx, [BALL_X] ; 3B 1E XX XX
+					cmp bx, si ; 39 F3
 					jg SHORT .end_ball_if ; 7F 12
 						.if_ball_y_gt:
 						add al, 4 ; 04 04
-						cmp al, [BALL_Y] ; 3A 06 XX XX
+						cmp al, dl ; 38 D0
 						jl SHORT .end_ball_if ; 7C 0A
 							.if_ball_y_lt:
 							sub al, 8 ; 2C 08 
-							cmp al, [BALL_Y] ; 3A 06 XX XX
+							cmp al, dl ; 38 D0
 							jg SHORT .end_ball_if ; 7F 02
 								mov cl, 0x0F ; B1 0F
 				.end_ball_if:
@@ -374,20 +377,23 @@ pong_main:
 	; - SECTION 40B
 
 				; Left Paddle Rendering
+				; dl = LPY, dr = RPY
+				mov dx, [LEFT_PADDLE_Y] ; 8B 16 XX XX
+
 				push ax ;  50
 				.if_lpaddle_x_gt:
 				cmp bx, 10 ; 83 FB 0A
 				jl SHORT .endif_lpaddle ; 7C 17
 					.if_lpaddle_x_lt:
 					cmp bx, 14 ; 83 FB 0E
-					jg SHORT .endif_lpaddle ; 7F 12
+					jg SHORT .endif_lpaddle ; 7F 17
 						.if_lpaddle_y_gt:
 						add al, 20 ; 04 14
-						cmp al, [LEFT_PADDLE_Y] ; 3A 06 XX XX
+						cmp al, dl ; 38 D0
 						jl SHORT .endif_lpaddle ; 7C 0A
 							.if_lpaddle_y_lt:
 							sub al, 40 ; 2C 28
-							cmp al, [LEFT_PADDLE_Y] ; 3A 06 XX XX
+							cmp al, dl ; 7F 02
 							jg SHORT .endif_lpaddle ; 7F 02
 								mov cl, 0x0F ; B1 0F
 				.endif_lpaddle:
