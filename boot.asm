@@ -333,7 +333,7 @@ pong_main:
 	; Memory is column major order
 	mov ax, 0xA000 ; B8 00 A0
 	mov es, ax ; 8E C0
-	; - SECTION 10
+	; - SECTION 10B
 
 	.loop:
 		call check_escape ; E8 XX XX
@@ -349,47 +349,50 @@ pong_main:
 	; - SECTION 11B
 
 				; Ball Rendering
+				push ax ; 50
+				push bx ; 53
 				.if_ball_x_gt:
-				mov dx, bx ; 89 DA
-				add dx, 4 ; 83 C2 04
-				cmp dx, [BALL_X] ; 3B 16 XX XX
-				jl SHORT .end_ball_if ; 7C 23
+				add bx, 4 ; 83 C3 04
+				cmp bx, [BALL_X] ; 3B 1E XX XX
+				jl SHORT .end_ball_if ; 7C 1B
 					.if_ball_x_lt:
-					sub dx, 8 ; 83 EA 08
-					cmp dx, [BALL_X] ; 3B 16 XX XX
-					jg SHORT .end_ball_if ; 7F 18
+					sub bx, 8 ; 83 EB 08
+					cmp bx, [BALL_X] ; 3B 1E XX XX
+					jg SHORT .end_ball_if ; 7F 12
 						.if_ball_y_gt:
-						mov dl, al ; 88 C2
-						add dl, 4 ; 80 C2 04
-						cmp dl, [BALL_Y] ; 3A 16 XX XX
-						jl SHORT .end_ball_if ; 7C 0D
+						add al, 4 ; 04 04
+						cmp al, [BALL_Y] ; 3A 06 XX XX
+						jl SHORT .end_ball_if ; 7C 0A
 							.if_ball_y_lt:
-							sub dl, 8 ; 80 EA 08
-							cmp dl, [BALL_Y] ; 3A 16 XX XX
+							sub al, 8 ; 2C 08 
+							cmp al, [BALL_Y] ; 3A 06 XX XX
 							jg SHORT .end_ball_if ; 7F 02
 								mov cl, 0x0F ; B1 0F
 				.end_ball_if:
-	; - SECTION 42B
+				pop bx ; 5B
+				pop ax ; 58
+	; - SECTION 40B
 
 				; Left Paddle Rendering
+				push ax ;  50
 				.if_lpaddle_x_gt:
 				cmp bx, 10 ; 83 FB 0A
-				jl SHORT .endif_lpaddle ; 7C 1D
+				jl SHORT .endif_lpaddle ; 7C 17
 					.if_lpaddle_x_lt:
 					cmp bx, 14 ; 83 FB 0E
-					jg SHORT .endif_lpaddle ; 7F 18
+					jg SHORT .endif_lpaddle ; 7F 12
 						.if_lpaddle_y_gt:
-						mov dl, al ; 88 C2
-						add dl, 20 ; 80 C2 14
-						cmp dl, [LEFT_PADDLE_Y] ; 3A 16 XX XX
-						jl SHORT .endif_lpaddle ; 7C 0D
+						add al, 20 ; 04 14
+						cmp al, [LEFT_PADDLE_Y] ; 3A 06 XX XX
+						jl SHORT .endif_lpaddle ; 7C 0A
 							.if_lpaddle_y_lt:
-							sub dl, 40 ; 80 EA 28
-							cmp dl, [LEFT_PADDLE_Y] ; 3A 16 XX XX
+							sub al, 40 ; 2C 28
+							cmp al, [LEFT_PADDLE_Y] ; 3A 06 XX XX
 							jg SHORT .endif_lpaddle ; 7F 02
 								mov cl, 0x0F ; B1 0F
 				.endif_lpaddle:
-	; - SECTION 32B
+				pop ax ; 58
+	; - SECTION 30B
 
 				; Right Paddle Rendering
 				.if_rpaddle_x_gt:
@@ -413,7 +416,7 @@ pong_main:
 
 	jmp SHORT .loop ; EB 8E
 	; - SECTION 4B
-; - SECTION TOTAL 117B
+; - SECTION TOTAL 113B
 
 ; Entry point for games not yet constructed.
 na_main:
