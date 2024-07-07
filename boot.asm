@@ -77,7 +77,7 @@ main:
 
 				; Create Border
 				.if_top_boundry:
-				cmp al, 0 ; 3C 00
+				test al, al ; 84 C0
 				jne SHORT .if_bottom_boundry ; 75 02
 				; if (y == 0)
 					; cl = hash
@@ -88,7 +88,7 @@ main:
 				; if (y == SCREEN_HEIGHT - 1)
 					mov cl, 0x23 ; B1 23
 				.if_left_boundry:
-				cmp bl, 0 ; 80 FB 00
+				test bl, bl ; 84 DB
 				jne SHORT .if_right_boundry ; 75 02
 				; if (x == 0)
 					mov cl, 0x23 ; B1 23
@@ -237,7 +237,7 @@ main:
 			; SELECTION = NUM_TITLES - 1
 			mov bl, NUM_TITLES - 1 ; B3 02
 		.if_selection_under:
-		cmp bl, 0 ; 80 FB 00
+		test bl, bl ; 84 DB
 		jge SHORT .endif_selection ; 7D 02
 		; SELECTION < 0
 			xor bl, bl ; 30 DB
