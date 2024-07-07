@@ -289,7 +289,7 @@ clear_screen:
 	; scroll down window, clear
 	mov ax, 0x0700 ; B8 00 07
 	; white foreground, black background
-	mov bx, 0x0700 ; BB 00 07
+	mov bx, ax ; 89 C3
 	; upper left position
 	xor cx, cx ; 31 C9
 	; lower right position
@@ -305,7 +305,7 @@ clear_screen:
 	; video services
 	int 0x10 ; CD 10
 	ret ; C3
-; - SECTION TOTAL 22B
+; - SECTION TOTAL 21B
 
 ; Non block escape check to go 
 ; back to the menu.
