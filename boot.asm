@@ -28,7 +28,8 @@ section .bss
 	PADDLES_Y resb 2
 	BALL_X resb 2
 	BALL_Y resb 1
-	BALL_VELOCITY resb 1 
+	BALL_VELOCITY_X resb 1 
+	BALL_VELOCITY_Y resb 1
 	LEFT_PADDLE_SCORE resb 1
 	RIGHT_PADDLE_SCORE resb 1
 
@@ -60,23 +61,18 @@ main:
 				; Create Border
 				.if_top_boundry:
 				test bl, bl
-				jne SHORT .if_bottom_boundry
-					; if (y == 0)
-					mov al, 0x23 ; hash
+				je SHORT .apply_hash
 				.if_bottom_boundry:
 				cmp bl, SCREEN_HEIGHT - 1
-				jne SHORT .if_left_boundry
-					; if (y == SCREEN_HEIGHT - 1)
-					mov al, 0x23
+				je SHORT .apply_hash
 				.if_left_boundry:
 				test cl, cl
-				jne SHORT .if_right_boundry
-					; if (x == 0)
-					mov al, 0x23
+				je SHORT .apply_hash
 				.if_right_boundry:
 				cmp cl, SCREEN_WIDTH - 1
-				jne SHORT .endif_boundry
-					; if (x == SCREEN_WIDTH - 1)
+				je SHORT .apply_hash
+				jmp SHORT .endif_boundry
+				.apply_hash:
 					mov al, 0x23
 				.endif_boundry:
 		
@@ -392,6 +388,32 @@ pong_main:
 
 		; Start ai paddle
 		; End ai paddle
+
+		; Start Ball Movement
+		mov ax, [BALL_X]
+		mov bl, [BALL_Y]
+
+		; Left Right Checks
+		; If too far to the left, back to mid. Go Right.
+		.check_ball_left:
+		cmp ax, 10
+		jge SHORT .reset_ball
+		; If too far to the right back to mid. Go Left.
+		.check_ball_right:
+		cmp ax, 310
+		jle SHORT .reset_ball
+
+		jmp SHORT .endif_check_ball
+		.reset_ball:
+			mov word [BALL_X], 320 / 2
+			mov byte [BALL_Y], 200 / 2
+		.endif_check_ball:
+		
+		; Bounce Checks
+		
+		; Apply Velocity
+
+		; End Ball Movement
 
 	jmp NEAR .loop
 
