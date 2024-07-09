@@ -279,7 +279,6 @@ pong_main:
 
 	.loop:
 		call check_escape
-
 		; Start Rendering
 		xor di, di
 		xor ax, ax
@@ -369,7 +368,32 @@ pong_main:
 		jl SHORT .y_loop
 		; End Rendering
 
-	jmp SHORT .loop
+		
+		; Start paddle input
+		; keypress from buffer
+		mov ah, 0x01
+		; keyboard input
+		int 0x16
+		jz SHORT .endif
+			; key buffer is not empty
+			xor ah, ah
+			int 0x16
+			mov di, PADDLES_Y
+			.if_up:
+			cmp ah, 0x48
+			jne SHORT .if_down
+				sub byte [di], 10
+			.if_down:
+			cmp ah, 0x50
+			jne SHORT .endif
+				add byte [di], 10
+			.endif:
+		; End paddle input
+
+		; Start ai paddle
+		; End ai paddle
+
+	jmp NEAR .loop
 
 ; Entry point for games not yet constructed.
 na_main:
