@@ -25,9 +25,8 @@ section .bss
 	SELECTION resb 1
 
 	; Pong Data
-	LEFT_PADDLE_Y resb 1
-	RIGHT_PADDLE_Y resb 1
-	BALL_X resb 1
+	PADDLES_Y resb 2
+	BALL_X resb 2
 	BALL_Y resb 1
 	BALL_VELOCITY resb 1 
 	LEFT_PADDLE_SCORE resb 1
@@ -318,7 +317,7 @@ pong_main:
 
 				; Left Paddle Rendering
 				; dl = LPY, dr = RPY
-				mov dx, [LEFT_PADDLE_Y]
+				mov dx, [PADDLES_Y]
 
 				push ax
 				.if_lpaddle_x_gt:
@@ -340,11 +339,24 @@ pong_main:
 				pop ax
 
 				; Right Paddle Rendering
+				push ax
 				.if_rpaddle_x_gt:
-				.if_rpaddle_x_lt:
-				.if_rpaddle_y_gt:
-				.if_rpaddle_y_lt:
+				cmp bx, 306
+				jl SHORT .endif_rpaddle
+					.if_rpaddle_x_lt:
+					cmp bx, 310
+					jg SHORT .endif_rpaddle
+						.if_rpaddle_y_gt:
+						add al, 20
+						cmp al, dh
+						jl SHORT .endif_rpaddle
+							.if_rpaddle_y_lt:
+							sub al, 40
+							cmp al, dh
+							jg SHORT .endif_rpaddle
+								mov cl, 0x0F
 				.endif_rpaddle:
+				pop ax
 
 				; Render Pixel
 				mov [es:di], cl
