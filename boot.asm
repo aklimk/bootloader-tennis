@@ -11,14 +11,14 @@ STACK_BOTTOM equ 0x8000
 ; heap : 0x8000 (incl) upwards
 ; stack : 0xFFFE (incl) downwards
 section .data
+	GAME_ENTRY_POINTS dw pong_main, na_main, na_main
 	TITLE_ONE db "PONG", 0
-	TITLE_TWO db "DEMO12", 0
+	TITLE_TWO db "DEMO", 0
 	TITLE_THREE db "PLCEHLDR", 0
 	TITLES dw TITLE_ONE, TITLE_TWO, TITLE_THREE
-	TITLE_PADDINGS db 8, 7, 6
-	NA_GAME_MSG db "Roadworks", 0
+	TITLE_PADDINGS db 8, 8, 6
+	NA_GAME_MSG db "Nope", 0
 	NA_GAME_MSG_PADDING db 35
-	GAME_ENTRY_POINTS dw pong_main, na_main, na_main
 
 section .bss
 	SCREEN_STRING resb SCREEN_WIDTH * SCREEN_HEIGHT + (SCREEN_HEIGHT * 2)
@@ -28,8 +28,7 @@ section .bss
 	PADDLES_Y resb 2
 	BALL_X resb 2
 	BALL_Y resb 1
-	BALL_VELOCITY_X resb 1 
-	BALL_VELOCITY_Y resb 1
+	BALL_VELOCITY resb 2
 	LEFT_PADDLE_SCORE resb 1
 	RIGHT_PADDLE_SCORE resb 1
 
@@ -160,28 +159,18 @@ main:
 		.if_up:
 		cmp al, 0x48
 		jne SHORT .if_down
+		test bl, bl
+		jle SHORT .if_down
 		; scancode = 0x48
 			dec bx
 		.if_down:
 		cmp al, 0x50
 		jne SHORT .endif_keycode
+		cmp bl, NUM_TITLES - 1
+		je SHORT .endif_keycode
 		; scancode = 0x50
 			inc bx
 		.endif_keycode:
-
-		; Make sure SELECTION stays in a valid range
-		.if_selection_over:
-		cmp bl, NUM_TITLES
-		jl SHORT .if_selection_under
-			; SELECTION >= NUM_TITLES
-			mov bl, NUM_TITLES - 1
-		.if_selection_under:
-		test bl, bl
-		jge SHORT .endif_selection
-			; SELECTION < 0
-			xor bl, bl
-		.endif_selection:
-
 		mov [SELECTION], bl
 
 		; Detect enter keypress
@@ -383,35 +372,45 @@ pong_main:
 			cmp ah, 0x50
 			jne SHORT .endif
 				add byte [di], 10
-			.endif:
+		.endif:
 		; End paddle input
 
 		; Start ai paddle
 		; End ai paddle
 
 		; Start Ball Movement
-		mov ax, [BALL_X]
-		mov bl, [BALL_Y]
+		mov di, BALL_X
+		mov si, BALL_VELOCITY
 
 		; Left Right Checks
 		; If too far to the left, back to mid. Go Right.
 		.check_ball_left:
-		cmp ax, 10
-		jge SHORT .reset_ball
+		cmp word [di], 10
+		jl SHORT .reset_ball
 		; If too far to the right back to mid. Go Left.
 		.check_ball_right:
-		cmp ax, 310
-		jle SHORT .reset_ball
+		cmp word [di], 310
+		jg SHORT .reset_ball
 
 		jmp SHORT .endif_check_ball
 		.reset_ball:
-			mov word [BALL_X], 320 / 2
-			mov byte [BALL_Y], 200 / 2
+			mov word [di], 320 / 2
+			mov byte [di + 2], 200 / 2
+			mov word [si], 0x0001
 		.endif_check_ball:
 		
 		; Bounce Checks
 		
 		; Apply Velocity
+		mov cx, [si]
+		; cl = velocity x, ch = velocity y
+
+		xor dx, dx
+		mov dl, cl
+
+		; dl = velocity y
+		add word [di], dx
+		add byte [di + 2], ch
 
 		; End Ball Movement
 
