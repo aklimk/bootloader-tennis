@@ -6,27 +6,19 @@ SCREEN_HEIGHT equ 20
 NUM_TITLES equ 3
 STACK_SIZE equ 0xAAAA
 STACK_BOTTOM equ 0x8000
-; SECTION TOTAL 0B
 
 ; txt + data + bss : 0x7C00 (incl) - 0x7FFF (incl)
 ; heap : 0x8000 (incl) upwards
 ; stack : 0xFFFE (incl) downwards
 section .data
-	TITLE_ONE db "PONG" ; 50 4F 4E 47
-	TITLE_TWO db "DEMO12" ; 44 45 4D 4F 31 32
-	TITLE_THREE db "PLCEHLDR" ; 50 4C 43 45 48 4C 44 52
-	; - SECTION 18B
-	TITLES dw TITLE_ONE, TITLE_TWO, TITLE_THREE  ; XX XX YY YY ZZ ZZ
-	; - SECTION 6B
-	TITLE_PADDINGS db 8, 8, 7, 7, 6, 6 ; 08 08 07 07 06 06
-	; - SECTION 6B
-	NA_GAME_MSG db "Roadworks", 0 ; 52 6F 61 64 77 6F 72 6B 73 00
-	; - SECTION 10B
-	NA_GAME_MSG_PADDING db 35 ; 23
-	; - SECTION 1B
-	GAME_ENTRY_POINTS dw pong_main, na_main, na_main ; XX XX YY YY ZZ ZZ
-	; - SECTION 6B
-; SECTION TOTAL 47B
+	TITLE_ONE db "PONG", 0
+	TITLE_TWO db "DEMO12", 0
+	TITLE_THREE db "PLCEHLDR", 0
+	TITLES dw TITLE_ONE, TITLE_TWO, TITLE_THREE
+	TITLE_PADDINGS db 8, 7, 6
+	NA_GAME_MSG db "Roadworks", 0
+	NA_GAME_MSG_PADDING db 35
+	GAME_ENTRY_POINTS dw pong_main, na_main, na_main
 
 section .bss
 	SCREEN_STRING resb SCREEN_WIDTH * SCREEN_HEIGHT + (SCREEN_HEIGHT * 2)
@@ -40,230 +32,178 @@ section .bss
 	BALL_VELOCITY resb 1 
 	LEFT_PADDLE_SCORE resb 1
 	RIGHT_PADDLE_SCORE resb 1
-; SECTION TOTAL 0B
 
 section .text
 setup_stack:
-	mov ax, STACK_BOTTOM ; B8 00 80 
-	mov ss, ax ; 8E D0 
-	mov sp, STACK_SIZE ; BC AA AA
-	; - SECTION 8B
-; - SECTION TOTAL 8B
+	mov ax, STACK_BOTTOM
+	mov ss, ax
+	mov sp, STACK_SIZE
 
 main:
 	; Reset to Text mode
-	mov ax, 0x0003 ; B8 03 00
-	int 0x10 ; CD 10
-	; - SECTION 5B
+	mov ax, 0x0003
+	int 0x10
 
 	; Menu Loop
 	.start_game_loop:
-		; Clear Menu
-		call NEAR clear_screen ; E8 D6 00
+		call NEAR clear_screen
 		
 		; Menu Rendering Start
-		mov di, SCREEN_STRING ; BF XX XX
-		mov si, TITLE_PADDINGS ; BE XX XX
-	; - SECTION 9B
+		mov ah, 0x0E
+		mov si, TITLE_PADDINGS
 	
-		xor ax, ax ; 31 C0
+		xor bx, bx 
 		.loop_y:
-			xor bx, bx ; 31 DB
+			xor cx, cx
 			.loop_x:
-
-				; cl = space
-				mov cl, 0x20 ; B1 20
-	; - SECTION 6B
+				mov al, 0x20 ; space
 
 				; Create Border
 				.if_top_boundry:
-				test al, al ; 84 C0
-				jne SHORT .if_bottom_boundry ; 75 02
-				; if (y == 0)
-					; cl = hash
-					mov cl, 0x23 ; B1 23
+				test bl, bl
+				jne SHORT .if_bottom_boundry
+					; if (y == 0)
+					mov al, 0x23 ; hash
 				.if_bottom_boundry:
-				cmp al, SCREEN_HEIGHT - 1 ; 3C 13
-				jne SHORT .if_left_boundry ; 75 02
-				; if (y == SCREEN_HEIGHT - 1)
-					mov cl, 0x23 ; B1 23
+				cmp bl, SCREEN_HEIGHT - 1
+				jne SHORT .if_left_boundry
+					; if (y == SCREEN_HEIGHT - 1)
+					mov al, 0x23
 				.if_left_boundry:
-				test bl, bl ; 84 DB
-				jne SHORT .if_right_boundry ; 75 02
-				; if (x == 0)
-					mov cl, 0x23 ; B1 23
+				test cl, cl
+				jne SHORT .if_right_boundry
+					; if (x == 0)
+					mov al, 0x23
 				.if_right_boundry:
-				cmp bl, SCREEN_WIDTH - 1 ; 80 FB 13
-				jne SHORT .endif_boundry ; 75 02
-				; if (x == SCREEN_WIDTH - 1)
-					mov cl, 0x23 ; B1 23
+				cmp cl, SCREEN_WIDTH - 1
+				jne SHORT .endif_boundry
+					; if (x == SCREEN_WIDTH - 1)
+					mov al, 0x23
 				.endif_boundry:
-	; - SECTION	24B
 		
 				; ">" Char Rendering
-				.if_selector_x:
-				mov dl, [SELECTION] ; 8A 16 XX XX
-				inc dx ; 42
-				inc dx ; 42
-				cmp al, dl ; 38 D0
-				jne SHORT .endif_selector ; 75 07
-				; if (y == SELECTION + 2)
-					.if_selector_y:
-					cmp bl, 2 ; 80 FB 02
-					jne SHORT .endif_selector ; 75 02
-					; if (x == 2)
-						; cl = >
-						mov cl, 0x3E ; B1 3E
+				.if_selector_y:
+				mov dl, [SELECTION]
+				inc dx
+				inc dx
+				cmp bl, dl
+				jne SHORT .endif_selector
+					; if (y == SELECTION + 2)
+					.if_selector_x:
+					cmp cl, 2
+					jne SHORT .endif_selector
+						; if (x == 2)
+						mov al, 0x3E
+							; cl = >
 				.endif_selector:
-	; - SECTION 18B
 				
 				; Game Titles Rendering
 				.if_text_y_gt:
-				cmp al, 1 ; 3C 01
-				jle SHORT .end_text_if ; 7E 26
+				cmp bl, 1
+				jle SHORT .endif_text
 				; if (y > 1)
 					.if_text_y_le:
-					cmp al, NUM_TITLES + 1 ; 3C 04
-					jg SHORT .end_text_if ; 7F 22
+					cmp bl, NUM_TITLES + 1
+					jg SHORT .endif_text
 					; if (y <= NUM_TITLES + 1)
 						.if_text_x_gt:
-						cmp bl, [si] ; 3A 1C
-						jb SHORT .end_text_if ; 72 1E
-						; if (x > paddings[0])
-							.if_text_x_2:
-							mov dl, SCREEN_WIDTH ; B2 14
-							sub dl, [si + 1] ; 2A 54 01
-							cmp bl, dl ; 38 D3
-							jae SHORT .end_text_if ; 73 15
-							; if (x <= SCREEN_WIDTH - paddings[1])
-	; - SECTION 21B
-								; Render Text
-								push di ; 57
+						cmp cl, [si]
+						jl SHORT .endif_text
+						; if x >= padding
+							.if_text_x_le:
+							cmp cl, SCREEN_WIDTH / 2
+							jge SHORT .endif_text
+							; if x < (SCREEN_WIDTH / 2)
+								push bx
 
-								; GAMES[y - 2]
-								mov di, ax ; 89 C7
-								dec di ; 4F
-								dec di ; 4F
-								; GAMES elem size is 16 bits, thus
-								; bp = 2(y - 2) to index correctly
-								shl di, 1 ; D1 E7
-								mov di, [TITLES + di] ; 8B BD XX XX
-								; bp = char*
-							
-								; &GAMES[y - 2][x - paddings[0]]
-								mov dl, bl ; 88 DA
-								sub dl, [si] ; 2A 14
-								add di, dx ; 01 D7
-		
-								mov cl, [di] ; 8A 0D
+								dec bx
+								dec bx
+								shl bl, 1
+								; bx = 2(y - 2)
 
-								pop di ; 5F
-				.end_text_if:
-	; - SECTION 21B				
+								add bx, TITLES
+								mov di, [bx]
+								; di = TITLES[y - 2]
+								
+								call print_string
 
-				; set char
-				mov [di], cl ; 88 0D
-				inc di ; 47
+								xor al, al
+								inc si
 
-			inc bx ; 43 
-			cmp bl, SCREEN_WIDTH ; 80 FB 14
-			jl SHORT .loop_x ; 7C 9E
+								pop bx
+					.endif_text:
 
+				int 0x10
+			inc cx
+			cmp cl, SCREEN_WIDTH
+			jl SHORT .loop_x
 			; x == SCREEN_WIDTH	
-			; add \r\n to screen_string
-			mov word [di], 0x0A0D ; C7 05 0D 0A
-			inc di ; 47
-			inc di ; 47
-	; - SECTION 17B
-			
-			; increment padding array to next padding pair
-			; iff currently on a title row
-			.if_text_y_gt_2:
-				cmp al, 1 ; 3C 01
-				jle SHORT .endif_text_2 ; 7E 03
-				; y > 1
-				; don't need to check y < GAMES_COUNT as the
-				; padding will never be dereferenced
-					inc si ; 46
-					inc si ; 46
-			.endif_text_2:
-	; - SECTION 7B
-			
-		inc ax ; 40
-		cmp al, SCREEN_HEIGHT ; 3C 14
-		jl SHORT .loop_y ; 7C 87
-	; - SECTION 6B
 
+			; add \r\n to screen_string
+			mov al, 0x0A
+			int 0x10
+			mov al, 0x0D
+			int 0x10
+		inc bx
+		cmp bl, SCREEN_HEIGHT
+		jl SHORT .loop_y
 		; y == SCREEN_HEIGHT
 		; Menu Rendering Stop
 
-		; Display Rendered Menu
-		mov di, SCREEN_STRING ; BF XX XX
-		call print_string ; E8 XX XX
-	; - SECTION 6B
-
 		; Update Menu from Input Start
 		; read key press
-		xor ah, ah ; 30 E4
+		xor ah, ah
 		; keyboard io interupt
-		int 0x16 ; CD 16
-		
-		mov al, ah ; 88 E0
-	; - SECTION 6B
+		int 0x16
+		mov al, ah
 
 		; ah = scan code, al = ascii
 		; High = scan, low = ascii
 		; < = 0x4B00, > = 0x4D00
 		; ^ = 0x4800, dwn = 0x5000
-		mov bl, [SELECTION] ; 8A 1E XX XX
+		mov bl, [SELECTION]
 		.if_up:
-		cmp al, 0x48 ; 3C 48
-		jne SHORT .if_down ; 75 03
+		cmp al, 0x48
+		jne SHORT .if_down
 		; scancode = 0x48
-			dec bx ; 4B
+			dec bx
 		.if_down:
-		cmp al, 0x50 ; 3C 50
-		jne SHORT .endif_keycode ; 75 05
+		cmp al, 0x50
+		jne SHORT .endif_keycode
 		; scancode = 0x50
-			inc bx ; 43
+			inc bx
 		.endif_keycode:
-	; - SECTION 18B
 
 		; Make sure SELECTION stays in a valid range
 		.if_selection_over:
-		cmp bl, NUM_TITLES ; 80 FB 03
-		jl SHORT .if_selection_under ; 7D 02
-		; SELECTION >= NUM_TITLES
-			; SELECTION = NUM_TITLES - 1
-			mov bl, NUM_TITLES - 1 ; B3 02
+		cmp bl, NUM_TITLES
+		jl SHORT .if_selection_under
+			; SELECTION >= NUM_TITLES
+			mov bl, NUM_TITLES - 1
 		.if_selection_under:
-		test bl, bl ; 84 DB
-		jge SHORT .endif_selection ; 7D 02
-		; SELECTION < 0
-			xor bl, bl ; 30 DB
+		test bl, bl
+		jge SHORT .endif_selection
+			; SELECTION < 0
+			xor bl, bl
 		.endif_selection:
 
-		mov [SELECTION], bl ; 88 1E XX XX
-	; - SECTION 18B
+		mov [SELECTION], bl
 
 		; Detect enter keypress
 		; ENTER = 0x1C0D
 		.if_enter:
-		cmp al, 0x1C ; 3C 1C
-		jne SHORT .endif_enter ; 75 0F
+		cmp al, 0x1C
+		jne SHORT .endif_enter
 		; scancode = 0x1C 
-			call clear_screen ; E8 1C 00
-			mov bl, [SELECTION] ; 8A 1E XX XX
-			shl bl, 1 ; D0 E3
-			mov bx, [GAME_ENTRY_POINTS + bx] ; 8B 9F XX XX
-			jmp bx ; FF E3
+			call clear_screen
+			mov bl, [SELECTION]
+			shl bl, 1
+			mov bx, [GAME_ENTRY_POINTS + bx]
+			jmp bx
 		.endif_enter:
 		; Update Menu from Input Stop
-	; - SECTION 19B	
 		
-	jmp NEAR .start_game_loop ; E9 34 FF
-	; - SECTION 3B
-; - SECTION TOTAL 204B
+	jmp NEAR .start_game_loop
 
 ; void print_string(char* string)
 ; Prints the screen string to terminal.
@@ -272,139 +212,132 @@ main:
 ;         Assumes its not an empty string.
 print_string:
 	; Teletype
-	mov ah, 0x0E ; B4 0E
+	mov ah, 0x0E
 	.print_char:
-		mov al, [di] ; 8A 05
+		inc cx
+		mov al, [di]
 		; Video Interupt
-		int 0x10 ; CD 10
-	inc di ; 46
-	cmp byte [di], 0x00 ; 80 3D 00
-	jne SHORT .print_char ; 75 F6 
-	ret ; C3
-; - SECTION TOTAL 13B
+		int 0x10
+	inc di
+	cmp byte [di], 0x00
+	jne SHORT .print_char
+	ret
 
 ; void clear_screen()
 ; Clears the terminal screen.
 clear_screen:
 	; scroll down window, clear
-	mov ax, 0x0700 ; B8 00 07
+	mov ax, 0x0700
 	; white foreground, black background
-	mov bx, ax ; 89 C3
+	mov bx, ax
 	; upper left position
-	xor cx, cx ; 31 C9
+	xor cx, cx
 	; lower right position
-	mov dx, 0x184F ; BA 4F 18
+	mov dx, 0x184F
 	; video services
-	int 0x10 ; CD 10
+	int 0x10
 	; set cursor position
-	mov ah, 0x02 ; B4 02
+	mov ah, 0x02
 	; page number
-	xor bh, bh ; 30 FF
+	xor bh, bh
 	; row, col
-	xor dx, dx ; 31 D2
+	xor dx, dx
 	; video services
-	int 0x10 ; CD 10
-	ret ; C3
-; - SECTION TOTAL 21B
+	int 0x10
+	ret
 
 ; Non block escape check to go 
 ; back to the menu.
 check_escape:
 	; keypress from buffer
-	mov ah, 0x01 ; B4 01
+	mov ah, 0x01
 	; keyboard input
-	int 0x16 ; CD 16
-	jz SHORT .endif_escape ; 74 0C
+	int 0x16
+	jz SHORT .endif_escape
 	; key buffer is not empty
 		.if_escape:
-		xor ah, ah ; 30 E4
-		int 0x16 ; CD 16
+		xor ah, ah
+		int 0x16
 		; ESC 
-		cmp ah, 0x01 ; 80 FC 01
-		jne SHORT .endif_escape ; 75 03
+		cmp ah, 0x01
+		jne SHORT .endif_escape
 		; scancode == 0x01
-			jmp NEAR main ; E9 XX XX
+			jmp NEAR main
 		.endif_escape:
-	ret ; C3
-; - SECTION TOTAL 19B
+	ret
 
 ; Entry point for the pong game.
 pong_main:
 	; Change video mode to graphical
 	; 320x200
-	mov ax, 0x13 ; B8 13 00
-	int 0x10 ; CD 10
+	mov ax, 0x13
+	int 0x10
 
 	; Set video memory area
 	; Memory is column major order
-	mov ax, 0xA000 ; B8 00 A0
-	mov es, ax ; 8E C0
-	; - SECTION 10B
+	mov ax, 0xA000
+	mov es, ax
 
 	.loop:
-		call check_escape ; E8 XX XX
+		call check_escape
 
 		; Start Rendering
-		xor di, di ; 31 FF
-		xor ax, ax ; 31 C0
+		xor di, di
+		xor ax, ax
 		.y_loop:
-			xor bx, bx ; 31 DB
+			xor bx, bx
 			.x_loop:
-				; Nothing
-				xor cl, cl ; 30 C9
-	; - SECTION 11B
+				xor cl, cl
 
 				; Ball Rendering
-				mov si, [BALL_X] ; 8B 36 XX XX
-				mov dl, [BALL_Y] ; 8A 16 XX XX
+				mov si, [BALL_X]
+				mov dl, [BALL_Y]
 
-				push ax ; 50
-				push bx ; 53
+				push ax
+				push bx
 				.if_ball_x_gt:
-				add bx, 4 ; 83 C3 04
-				cmp bx, si ; 39 F3
-				jl SHORT .end_ball_if ; 7C 15
+				add bx, 4
+				cmp bx, si
+				jl SHORT .end_ball_if
 					.if_ball_x_lt:
-					sub bx, 8 ; 83 EB 08
-					cmp bx, si ; 39 F3
-					jg SHORT .end_ball_if ; 7F 12
+					sub bx, 8
+					cmp bx, si
+					jg SHORT .end_ball_if
 						.if_ball_y_gt:
-						add al, 4 ; 04 04
-						cmp al, dl ; 38 D0
-						jl SHORT .end_ball_if ; 7C 0A
+						add al, 4
+						cmp al, dl
+						jl SHORT .end_ball_if
 							.if_ball_y_lt:
-							sub al, 8 ; 2C 08 
-							cmp al, dl ; 38 D0
-							jg SHORT .end_ball_if ; 7F 02
-								mov cl, 0x0F ; B1 0F
+							sub al, 8
+							cmp al, dl
+							jg SHORT .end_ball_if
+								mov cl, 0x0F
 				.end_ball_if:
-				pop bx ; 5B
-				pop ax ; 58
-	; - SECTION 40B
+				pop bx
+				pop ax
 
 				; Left Paddle Rendering
 				; dl = LPY, dr = RPY
-				mov dx, [LEFT_PADDLE_Y] ; 8B 16 XX XX
+				mov dx, [LEFT_PADDLE_Y]
 
-				push ax ;  50
+				push ax
 				.if_lpaddle_x_gt:
-				cmp bx, 10 ; 83 FB 0A
-				jl SHORT .endif_lpaddle ; 7C 17
+				cmp bx, 10
+				jl SHORT .endif_lpaddle
 					.if_lpaddle_x_lt:
-					cmp bx, 14 ; 83 FB 0E
-					jg SHORT .endif_lpaddle ; 7F 17
+					cmp bx, 14
+					jg SHORT .endif_lpaddle
 						.if_lpaddle_y_gt:
-						add al, 20 ; 04 14
-						cmp al, dl ; 38 D0
-						jl SHORT .endif_lpaddle ; 7C 0A
+						add al, 20
+						cmp al, dl
+						jl SHORT .endif_lpaddle
 							.if_lpaddle_y_lt:
-							sub al, 40 ; 2C 28
-							cmp al, dl ; 7F 02
-							jg SHORT .endif_lpaddle ; 7F 02
-								mov cl, 0x0F ; B1 0F
+							sub al, 40
+							cmp al, dl
+							jg SHORT .endif_lpaddle
+								mov cl, 0x0F
 				.endif_lpaddle:
-				pop ax ; 58
-	; - SECTION 30B
+				pop ax
 
 				; Right Paddle Rendering
 				.if_rpaddle_x_gt:
@@ -412,44 +345,39 @@ pong_main:
 				.if_rpaddle_y_gt:
 				.if_rpaddle_y_lt:
 				.endif_rpaddle:
-	; - SECTION 0B
 
 				; Render Pixel
-				mov [es:di], cl ; 26 88 0D
-				inc di ; 47
-			inc bx ; 43
-			cmp bx, 320 ; 81 FB 40 01
-			jl SHORT .x_loop ; 7C A3
-		inc ax ; 40
-		cmp ax, 200 ; 3D C8 00
-		jl SHORT .y_loop ; 7C 99
+				mov [es:di], cl
+				inc di
+			inc bx
+			cmp bx, 320
+			jl SHORT .x_loop
+		inc ax
+		cmp ax, 200
+		jl SHORT .y_loop
 		; End Rendering
-	; - SECTION 18B
 
-	jmp SHORT .loop ; EB 8E
-	; - SECTION 4B
-; - SECTION TOTAL 113B
+	jmp SHORT .loop
 
 ; Entry point for games not yet constructed.
 na_main:
 	; move cursor to middle of screen
 	; cursor pos
-	mov ah, 0x02 ; B4 02
+	mov ah, 0x02
 	; page num
-	xor bx, bx ; 31 DB
+	xor bx, bx
 	; row
-	mov dl, [NA_GAME_MSG_PADDING] ; 8A 16 XX XX
+	mov dl, [NA_GAME_MSG_PADDING]
 	; column
-	mov dh, 12 ; B6 0C
+	mov dh, 12
 	; video settings
-	int 0x10 ; CD 10
+	int 0x10
 
 	; print na game message
-	mov di, NA_GAME_MSG ; BF XX XX
-	call print_string ; E8 XX XX
+	mov di, NA_GAME_MSG
+	call print_string
 
 	.loop:
-		call check_escape ; E8 XX XX
-	jmp SHORT .loop ; EB FB
-; - SECTION TOTAL 23B
+		call check_escape
+	jmp SHORT .loop
 
