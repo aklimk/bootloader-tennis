@@ -400,6 +400,10 @@ pong_main:
 		.endif_check_ball:
 		
 		; Bounce Checks
+		; Top Wall
+		; Bottom Wall
+		; Left Paddle
+		; Right Paddle
 		
 		; Apply Velocity
 		mov cx, [si]
@@ -414,6 +418,26 @@ pong_main:
 
 		; End Ball Movement
 
+		; AI input start
+		mov dl, [PADDLES_Y + 1]
+		sub byte dl, [BALL_Y]
+		.if_ai:
+		test dl, dl
+		jz .endif_test_ai
+		test dl, 0xF0
+		jnz .endif_test_ai
+			mov dl, 0x10
+		.endif_test_ai:
+		shr dl, 4
+		sub byte [PADDLES_Y + 1], dl
+		
+		; AI input stop
+
+		; Slowdown loop
+		mov ah, 0x86
+		mov cx, 0x0000
+		mov dx, 0x4240
+		int 0x15
 	jmp NEAR .loop
 
 ; Entry point for games not yet constructed.
