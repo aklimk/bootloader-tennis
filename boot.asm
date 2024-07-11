@@ -6,6 +6,8 @@ SCREEN_HEIGHT equ 20
 NUM_TITLES equ 3
 STACK_SIZE equ 0xAAAA
 STACK_BOTTOM equ 0x8000
+NA_GAME_MSG_PADDING equ 38
+NA_GAME_MSG_ROW_COL equ (12 << 8) | NA_GAME_MSG_PADDING
 
 ; txt + data + bss : 0x7C00 (incl) - 0x7FFF (incl)
 ; heap : 0x8000 (incl) upwards
@@ -18,16 +20,16 @@ section .data
 	TITLES dw TITLE_ONE, TITLE_TWO, TITLE_THREE
 	TITLE_PADDINGS db 8, 8, 6
 	NA_GAME_MSG db "Nope", 0
-	NA_GAME_MSG_PADDING db 35
 
 section .bss
 	SCREEN_STRING resb SCREEN_WIDTH * SCREEN_HEIGHT + (SCREEN_HEIGHT * 2)
 	SELECTION resb 1
 
 	; Pong Data
-	PADDLES_Y resb 2
+	LEFT_PADDLE_Y resb 2
+	RIGHT_PADDLE_Y resb 2
 	BALL_X resb 2
-	BALL_Y resb 1
+	BALL_Y resb 2
 	BALL_VELOCITY resb 2
 	LEFT_PADDLE_SCORE resb 1
 	RIGHT_PADDLE_SCORE resb 1
@@ -41,6 +43,9 @@ setup_stack:
 main:
 	; Reset to Text mode
 	mov ax, 0x0003
+	int 0x10
+	mov ah, 0x01
+	mov cx, 0x2607
 	int 0x10
 
 	; Menu Loop
@@ -94,19 +99,19 @@ main:
 				; Game Titles Rendering
 				.if_text_y_gt:
 				cmp bl, 1
-				jle SHORT .endif_text
+				jbe SHORT .endif_text
 				; if (y > 1)
 					.if_text_y_le:
 					cmp bl, NUM_TITLES + 1
-					jg SHORT .endif_text
+					ja SHORT .endif_text
 					; if (y <= NUM_TITLES + 1)
 						.if_text_x_gt:
 						cmp cl, [si]
-						jl SHORT .endif_text
+						jb SHORT .endif_text
 						; if x >= padding
 							.if_text_x_le:
 							cmp cl, SCREEN_WIDTH / 2
-							jge SHORT .endif_text
+							jae SHORT .endif_text
 							; if x < (SCREEN_WIDTH / 2)
 								push bx
 
@@ -130,7 +135,7 @@ main:
 				int 0x10
 			inc cx
 			cmp cl, SCREEN_WIDTH
-			jl SHORT .loop_x
+			jb SHORT .loop_x
 			; x == SCREEN_WIDTH	
 
 			; add \r\n to screen_string
@@ -140,7 +145,7 @@ main:
 			int 0x10
 		inc bx
 		cmp bl, SCREEN_HEIGHT
-		jl SHORT .loop_y
+		jb SHORT .loop_y
 		; y == SCREEN_HEIGHT
 		; Menu Rendering Stop
 
@@ -160,7 +165,7 @@ main:
 		cmp al, 0x48
 		jne SHORT .if_down
 		test bl, bl
-		jle SHORT .if_down
+		jbe SHORT .if_down
 		; scancode = 0x48
 			dec bx
 		.if_down:
@@ -179,14 +184,11 @@ main:
 		cmp al, 0x1C
 		jne SHORT .endif_enter
 		; scancode = 0x1C 
-			call clear_screen
-			mov bl, [SELECTION]
 			shl bl, 1
 			mov bx, [GAME_ENTRY_POINTS + bx]
 			jmp bx
 		.endif_enter:
 		; Update Menu from Input Stop
-		
 	jmp NEAR .start_game_loop
 
 ; void print_string(char* string)
@@ -197,13 +199,13 @@ main:
 print_string:
 	; Teletype
 	mov ah, 0x0E
+	dec di
 	.print_char:
+		inc di
 		inc cx
 		mov al, [di]
-		; Video Interupt
-		int 0x10
-	inc di
-	cmp byte [di], 0x00
+		int 0x10 ; Video Interupt
+	test al, al
 	jne SHORT .print_char
 	ret
 
@@ -223,7 +225,7 @@ clear_screen:
 	; set cursor position
 	mov ah, 0x02
 	; page number
-	xor bh, bh
+	xor bx, bx
 	; row, col
 	xor dx, dx
 	; video services
@@ -250,6 +252,37 @@ check_escape:
 		.endif_escape:
 	ret
 
+
+; ax = y
+; bx = x
+; bp = x position (modifies)
+; si = y position (modifies)
+; dx = object height (modifies)
+; cl = rendered output (modifies)
+master_renderer:
+	shr bp, 7
+	shr si, 7
+	.if_x_gt:
+	sub bp, 4
+	cmp bx, bp
+	jl SHORT .stop_render
+		.if_x_lt:
+		add bp, 8
+		cmp bx, bp
+		jg SHORT .stop_render
+			.if_y_gt:
+			sub si, dx
+			cmp ax, si
+			jl SHORT .stop_render
+				.if_y_lt:
+				shl dx, 1
+				add si, dx
+				cmp ax, si
+				jg SHORT .stop_render 
+					mov cl, 0x0F
+	.stop_render:
+	ret
+
 ; Entry point for the pong game.
 pong_main:
 	; Change video mode to graphical
@@ -270,87 +303,36 @@ pong_main:
 		.y_loop:
 			xor bx, bx
 			.x_loop:
-				xor cl, cl
+				xor cx, cx
+				xor dx, dx
+				
+				; Render Ball
+				mov bp, [BALL_X]
+				mov si, [BALL_Y]
+				mov dl, 4
+				call master_renderer
 
-				; Ball Rendering
-				mov si, [BALL_X]
-				mov dl, [BALL_Y]
+				; Render Left Paddle
+				mov bp, 12 << 7
+				mov si, [LEFT_PADDLE_Y]
+				mov dl, 20
+				call master_renderer
 
-				push ax
-				push bx
-				.if_ball_x_gt:
-				add bx, 4
-				cmp bx, si
-				jl SHORT .end_ball_if
-					.if_ball_x_lt:
-					sub bx, 8
-					cmp bx, si
-					jg SHORT .end_ball_if
-						.if_ball_y_gt:
-						add al, 4
-						cmp al, dl
-						jl SHORT .end_ball_if
-							.if_ball_y_lt:
-							sub al, 8
-							cmp al, dl
-							jg SHORT .end_ball_if
-								mov cl, 0x0F
-				.end_ball_if:
-				pop bx
-				pop ax
-
-				; Left Paddle Rendering
-				; dl = LPY, dr = RPY
-				mov dx, [PADDLES_Y]
-
-				push ax
-				.if_lpaddle_x_gt:
-				cmp bx, 10
-				jl SHORT .endif_lpaddle
-					.if_lpaddle_x_lt:
-					cmp bx, 14
-					jg SHORT .endif_lpaddle
-						.if_lpaddle_y_gt:
-						add al, 20
-						cmp al, dl
-						jl SHORT .endif_lpaddle
-							.if_lpaddle_y_lt:
-							sub al, 40
-							cmp al, dl
-							jg SHORT .endif_lpaddle
-								mov cl, 0x0F
-				.endif_lpaddle:
-				pop ax
-
-				; Right Paddle Rendering
-				push ax
-				.if_rpaddle_x_gt:
-				cmp bx, 306
-				jl SHORT .endif_rpaddle
-					.if_rpaddle_x_lt:
-					cmp bx, 310
-					jg SHORT .endif_rpaddle
-						.if_rpaddle_y_gt:
-						add al, 20
-						cmp al, dh
-						jl SHORT .endif_rpaddle
-							.if_rpaddle_y_lt:
-							sub al, 40
-							cmp al, dh
-							jg SHORT .endif_rpaddle
-								mov cl, 0x0F
-				.endif_rpaddle:
-				pop ax
+				; Render Right Paddle
+				mov bp, 308 << 7
+				mov si, [RIGHT_PADDLE_Y]
+				mov dl, 20
+				call master_renderer
 
 				; Render Pixel
 				mov [es:di], cl
 				inc di
 			inc bx
 			cmp bx, 320
-			jl SHORT .x_loop
+			jb SHORT .x_loop
 		inc ax
 		cmp ax, 200
-		jl SHORT .y_loop
+		jb SHORT .y_loop
 		; End Rendering
 
 		
@@ -363,40 +345,39 @@ pong_main:
 			; key buffer is not empty
 			xor ah, ah
 			int 0x16
-			mov di, PADDLES_Y
+			mov di, LEFT_PADDLE_Y
+			mov bx, 640
 			.if_up:
 			cmp ah, 0x48
 			jne SHORT .if_down
-				sub byte [di], 10
+				sub word [di], bx
 			.if_down:
 			cmp ah, 0x50
 			jne SHORT .endif
-				add byte [di], 10
+				add word [di], bx
 		.endif:
 		; End paddle input
 
-		; Start ai paddle
-		; End ai paddle
-
 		; Start Ball Movement
-		mov di, BALL_X
+		mov di, [BALL_X]
+		shr di, 7
 		mov si, BALL_VELOCITY
 
 		; Left Right Checks
 		; If too far to the left, back to mid. Go Right.
 		.check_ball_left:
-		cmp word [di], 10
-		jl SHORT .reset_ball
+		cmp word di, 10
+		jb SHORT .reset_ball
 		; If too far to the right back to mid. Go Left.
 		.check_ball_right:
-		cmp word [di], 310
-		jg SHORT .reset_ball
+		cmp word di, 310
+		ja SHORT .reset_ball
 
 		jmp SHORT .endif_check_ball
 		.reset_ball:
-			mov word [di], 320 / 2
-			mov byte [di + 2], 200 / 2
-			mov word [si], 0x0001
+			mov word [BALL_X], (160 << 7)
+			mov word [BALL_Y], (100 << 7)
+			mov word [si], 0x0020
 		.endif_check_ball:
 		
 		; Bounce Checks
@@ -411,46 +392,38 @@ pong_main:
 
 		xor dx, dx
 		mov dl, cl
+		mov cl, ch
+		xor ch, ch
 
 		; dl = velocity y
-		add word [di], dx
-		add byte [di + 2], ch
+		add word [BALL_X], dx
+		add word [BALL_Y], cx
 
 		; End Ball Movement
 
 		; AI input start
-		mov dl, [PADDLES_Y + 1]
-		sub byte dl, [BALL_Y]
+		mov dx, [RIGHT_PADDLE_Y]
+		sub word dx, [BALL_Y]
 		.if_ai:
-		test dl, dl
+		test dx, dx
 		jz .endif_test_ai
-		test dl, 0xF0
+		test dx, 0xFFF0
 		jnz .endif_test_ai
-			mov dl, 0x10
+			mov dx, 0x0010
 		.endif_test_ai:
-		shr dl, 4
-		sub byte [PADDLES_Y + 1], dl
+		shr dx, 4
+		sub word [RIGHT_PADDLE_Y], dx
 		
 		; AI input stop
 
-		; Slowdown loop
-		mov ah, 0x86
-		mov cx, 0x0000
-		mov dx, 0x4240
-		int 0x15
 	jmp NEAR .loop
 
 ; Entry point for games not yet constructed.
 na_main:
+	call clear_screen
 	; move cursor to middle of screen
-	; cursor pos
-	mov ah, 0x02
-	; page num
-	xor bx, bx
-	; row
-	mov dl, [NA_GAME_MSG_PADDING]
-	; column
-	mov dh, 12
+	; cursor pos and page num set by clear_screen
+	mov dx, NA_GAME_MSG_ROW_COL
 	; video settings
 	int 0x10
 
