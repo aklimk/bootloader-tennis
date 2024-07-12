@@ -403,13 +403,6 @@ pong_main:
 		mov di, RIGHT_PADDLE_Y
 		mov dx, [di]
 		sub word dx, [si]
-		.if_ai:
-		test dx, dx
-		jz .endif_test_ai
-		test dx, 0xFFF0
-		jnz .endif_test_ai
-			mov dx, 0x0010
-		.endif_test_ai:
 		shr dx, 4
 		sub word [di], dx
 		
