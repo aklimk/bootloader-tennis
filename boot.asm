@@ -12,15 +12,6 @@ NA_GAME_MSG_ROW_COL equ (12 << 8) | NA_GAME_MSG_PADDING
 ; txt + data + bss : 0x7C00 (incl) - 0x7FFF (incl)
 ; heap : 0x8000 (incl) upwards
 ; stack : 0xFFFE (incl) downwards
-section .data
-	GAME_ENTRY_POINTS dw pong_main, na_main, na_main
-	TITLE_ONE db "PONG", 0
-	TITLE_TWO db "DEMO", 0
-	TITLE_THREE db "PLCEHLDR", 0
-	TITLES dw TITLE_ONE, TITLE_TWO, TITLE_THREE
-	TITLE_PADDINGS db 8, 8, 6
-	NA_GAME_MSG db "Nope", 0
-
 section .bss
 	SCREEN_STRING resb SCREEN_WIDTH * SCREEN_HEIGHT + (SCREEN_HEIGHT * 2)
 	SELECTION resb 1
@@ -190,6 +181,14 @@ main:
 		.endif_enter:
 		; Update Menu from Input Stop
 	jmp NEAR .start_game_loop
+
+GAME_ENTRY_POINTS dw pong_main, na_main, na_main
+TITLE_ONE db "PONG", 0
+TITLE_TWO db "DEMO", 0
+TITLE_THREE db "PLCEHLDR", 0
+TITLES dw TITLE_ONE, TITLE_TWO, TITLE_THREE
+TITLE_PADDINGS db 8, 8, 6
+NA_GAME_MSG db "Nope", 0
 
 ; void print_string(char* string)
 ; Prints the screen string to terminal.
