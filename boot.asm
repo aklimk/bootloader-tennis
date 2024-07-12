@@ -346,7 +346,7 @@ pong_main:
 			xor ah, ah
 			int 0x16
 			mov di, LEFT_PADDLE_Y
-			mov bx, 640
+			mov bx, 10 << 7
 			.if_up:
 			cmp ah, 0x48
 			jne SHORT .if_down
@@ -359,25 +359,25 @@ pong_main:
 		; End paddle input
 
 		; Start Ball Movement
-		mov di, [BALL_X]
-		shr di, 7
-		mov si, BALL_VELOCITY
+		mov di, BALL_X
+		mov si, BALL_Y
+		mov bx, BALL_VELOCITY
 
 		; Left Right Checks
 		; If too far to the left, back to mid. Go Right.
 		.check_ball_left:
-		cmp word di, 10
+		cmp word [di], 10 << 7
 		jb SHORT .reset_ball
 		; If too far to the right back to mid. Go Left.
 		.check_ball_right:
-		cmp word di, 310
+		cmp word [di], 310 << 7
 		ja SHORT .reset_ball
 
 		jmp SHORT .endif_check_ball
 		.reset_ball:
-			mov word [BALL_X], (160 << 7)
-			mov word [BALL_Y], (100 << 7)
-			mov word [si], 0x0020
+			mov word [di], (160 << 7)
+			mov word [si], (100 << 7)
+			mov word [bx], 0x0020
 		.endif_check_ball:
 		
 		; Bounce Checks
@@ -387,23 +387,22 @@ pong_main:
 		; Right Paddle
 		
 		; Apply Velocity
-		mov cx, [si]
-		; cl = velocity x, ch = velocity y
-
-		xor dx, dx
-		mov dl, cl
-		mov cl, ch
+		mov cx, [bx]
+		mov dl, ch
+		xor dh, dh
 		xor ch, ch
 
 		; dl = velocity y
-		add word [BALL_X], dx
-		add word [BALL_Y], cx
+		; cl = velocity x
+		add word [di], cx
+		add word [si], dx
 
 		; End Ball Movement
 
 		; AI input start
-		mov dx, [RIGHT_PADDLE_Y]
-		sub word dx, [BALL_Y]
+		mov di, RIGHT_PADDLE_Y
+		mov dx, [di]
+		sub word dx, [si]
 		.if_ai:
 		test dx, dx
 		jz .endif_test_ai
@@ -412,7 +411,7 @@ pong_main:
 			mov dx, 0x0010
 		.endif_test_ai:
 		shr dx, 4
-		sub word [RIGHT_PADDLE_Y], dx
+		sub word [di], dx
 		
 		; AI input stop
 
