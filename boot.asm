@@ -73,7 +73,8 @@ main:
 		
 				; ">" Char Rendering
 				.if_selector_y:
-				mov dl, [SELECTION]
+				mov di, SELECTION
+				mov dl, [di]
 				inc dx
 				inc dx
 				cmp bl, dl
@@ -112,6 +113,8 @@ main:
 								; bx = 2(y - 2)
 
 								add bx, TITLES
+
+								push di
 								mov di, [bx]
 								; di = TITLES[y - 2]
 								
@@ -119,7 +122,7 @@ main:
 
 								xor al, al
 								inc si
-
+								pop di
 								pop bx
 					.endif_text:
 
@@ -151,7 +154,7 @@ main:
 		; High = scan, low = ascii
 		; < = 0x4B00, > = 0x4D00
 		; ^ = 0x4800, dwn = 0x5000
-		mov bl, [SELECTION]
+		mov bl, [di]
 		.if_up:
 		cmp al, 0x48
 		jne SHORT .if_down
@@ -167,7 +170,7 @@ main:
 		; scancode = 0x50
 			inc bx
 		.endif_keycode:
-		mov [SELECTION], bl
+		mov [di], bl
 
 		; Detect enter keypress
 		; ENTER = 0x1C0D
