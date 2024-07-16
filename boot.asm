@@ -3,7 +3,7 @@
 
 SCREEN_WIDTH equ 20
 SCREEN_HEIGHT equ 20
-NUM_TITLES equ 3
+NUM_TITLES equ 2
 STACK_SIZE equ 0xAAAA
 STACK_BOTTOM equ 0x8000
 NA_GAME_MSG_PADDING equ 38
@@ -13,7 +13,6 @@ NA_GAME_MSG_ROW_COL equ (12 << 8) | NA_GAME_MSG_PADDING
 ; heap : 0x8000 (incl) upwards
 ; stack : 0xFFFE (incl) downwards
 section .bss
-	SCREEN_STRING resb SCREEN_WIDTH * SCREEN_HEIGHT + (SCREEN_HEIGHT * 2)
 	SELECTION resb 1
 
 	; Pong Data
@@ -21,7 +20,8 @@ section .bss
 	RIGHT_PADDLE_Y resb 2
 	BALL_X resb 2
 	BALL_Y resb 2
-	BALL_VELOCITY resb 2
+	BALL_VELOCITY_X resb 2
+	BALL_VELOCITY_Y resb 2
 	LEFT_PADDLE_SCORE resb 1
 	RIGHT_PADDLE_SCORE resb 1
 
@@ -88,6 +88,7 @@ main:
 							; cl = >
 				.endif_selector:
 				
+				int 0x10
 				; Game Titles Rendering
 				.if_text_y_gt:
 				cmp bl, 1
@@ -110,23 +111,16 @@ main:
 								dec bx
 								dec bx
 								shl bl, 1
-								; bx = 2(y - 2)
-
 								add bx, TITLES
-
 								push di
 								mov di, [bx]
-								; di = TITLES[y - 2]
-								
 								call print_string
 
-								xor al, al
 								inc si
 								pop di
 								pop bx
 					.endif_text:
 
-				int 0x10
 			inc cx
 			cmp cl, SCREEN_WIDTH
 			jb SHORT .loop_x
@@ -184,14 +178,6 @@ main:
 		.endif_enter:
 		; Update Menu from Input Stop
 	jmp NEAR .start_game_loop
-
-GAME_ENTRY_POINTS dw pong_main, na_main, na_main
-TITLE_ONE db "PONG", 0
-TITLE_TWO db "DEMO", 0
-TITLE_THREE db "PLCEHLDR", 0
-TITLES dw TITLE_ONE, TITLE_TWO, TITLE_THREE
-TITLE_PADDINGS db 8, 8, 6
-NA_GAME_MSG db "Nope", 0
 
 ; void print_string(char* string)
 ; Prints the screen string to terminal.
@@ -254,7 +240,6 @@ check_escape:
 		.endif_escape:
 	ret
 
-
 ; ax = y
 ; bx = x
 ; bp = x position (modifies)
@@ -283,6 +268,18 @@ master_renderer:
 				jg SHORT .stop_render 
 					mov cl, 0x0F
 	.stop_render:
+	ret
+
+invert_velocity_paddle:
+	inc word [bx]
+	inc word [bx + 2]
+	neg word [bx]
+	ret
+
+invert_velocity_wall:
+	inc word [bx]
+	inc word [bx + 2]
+	neg word [bx + 2]
 	ret
 
 ; Entry point for the pong game.
@@ -337,7 +334,6 @@ pong_main:
 		jb SHORT .y_loop
 		; End Rendering
 
-		
 		; Start paddle input
 		; keypress from buffer
 		mov ah, 0x01
@@ -349,6 +345,7 @@ pong_main:
 			int 0x16
 			mov di, LEFT_PADDLE_Y
 			mov bx, 10 << 7
+
 			.if_up:
 			cmp ah, 0x48
 			jne SHORT .if_down
@@ -363,16 +360,16 @@ pong_main:
 		; Start Ball Movement
 		mov di, BALL_X
 		mov si, BALL_Y
-		mov bx, BALL_VELOCITY
+		mov bx, BALL_VELOCITY_X
 
 		; Left Right Checks
 		; If too far to the left, back to mid. Go Right.
 		.check_ball_left:
-		cmp word [di], 10 << 7
+		cmp word [di], 4 << 7
 		jb SHORT .reset_ball
 		; If too far to the right back to mid. Go Left.
 		.check_ball_right:
-		cmp word [di], 310 << 7
+		cmp word [di], 316 << 7
 		ja SHORT .reset_ball
 
 		jmp SHORT .endif_check_ball
@@ -380,25 +377,59 @@ pong_main:
 			mov word [di], (160 << 7)
 			mov word [si], (100 << 7)
 			mov word [bx], 0x0020
+			mov word [bx + 2], 0x0008
 		.endif_check_ball:
 		
 		; Bounce Checks
-		; Top Wall
+
 		; Bottom Wall
+		.if_top_wall:
+			cmp word [si], 196 << 7
+			jb .endif_top_wall
+				call invert_velocity_wall
+		.endif_top_wall:
+
+		; Top Wall
+		.if_bottom_wall:
+			cmp word [si], 4 << 7
+			ja .endif_bottom_wall
+				call invert_velocity_wall
+		.endif_bottom_wall:
+
 		; Left Paddle
+		.if_lpc:
+		cmp word [di], 16 << 7
+		ja .endif_lpc
+			jmp .if_y_paddle
+		.endif_lpc:
+
 		; Right Paddle
+		.if_rpc:
+		cmp word [di], 304 << 7
+		jb SHORT .endif_rpc
+			jmp .if_y_paddle
+		.endif_rpc:
+
+		; Y paddle Check
+		jmp .endif_y_paddle
+		.if_y_paddle:
+			mov dx, [di - 2]
+			.if_y_paddle_gt:
+			sub dx, 20 << 7
+			cmp [si], dx
+			jl .endif_y_paddle
+				.if_y_paddle_lt:
+				add dx, 40 << 7
+				cmp [si], dx
+				jg .endif_y_paddle
+					call invert_velocity_paddle
+		.endif_y_paddle:
 		
 		; Apply Velocity
-		mov cx, [bx]
-		mov dl, ch
-		xor dh, dh
-		xor ch, ch
-
-		; dl = velocity y
-		; cl = velocity x
-		add word [di], cx
-		add word [si], dx
-
+		mov word ax, [bx]
+		add [di], ax
+		mov word ax, [bx + 2]
+		add [si], ax
 		; End Ball Movement
 
 		; AI input start
@@ -407,10 +438,16 @@ pong_main:
 		sub word dx, [si]
 		shr dx, 4
 		sub word [di], dx
-		
 		; AI input stop
 
 	jmp NEAR .loop
+
+GAME_ENTRY_POINTS dw pong_main, na_main
+TITLE_ONE db "PONG", 0
+TITLE_THREE db "PLCEHLDR", 0
+TITLES dw TITLE_ONE, TITLE_THREE
+TITLE_PADDINGS db 7, 5
+NA_GAME_MSG db "Nope", 0
 
 ; Entry point for games not yet constructed.
 na_main:
