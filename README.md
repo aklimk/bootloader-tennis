@@ -2,8 +2,8 @@
 A custom bootloader game selection screen and primitive tennis like game, written entirely on the 512 byte bios bootloader section.
 
 # Building
--Building the project requires NASM (The Netwide Assembler), or another equivelent assembler that can understand intel-like assembler syntax and NASM pre-processed equations.
--Building the project also requires a program which can turncate and append data to binary files. Both of these features are available by default on windows and linux.
+-Building the project requires NASM (The Netwide Assembler), or another equivelent assembler that can understand intel-like assembler syntax and NASM pre-processed equations.<br/>
+-Building the project also requires a program which can turncate and append data to binary files.
 
 To build the project:
 1. Assemble the boot.asm assembly file.
