@@ -11,5 +11,5 @@ if __name__ == "__main__":
     with open("boot.bin", "wb") as file:
         file.write(data_formatted)
 
-    if sys.argv > 1 and sys.argv[1] == "--run":
+    if len(sys.argv) > 1 and sys.argv[1] == "--run":
         os.system("qemu-system-i386 -fda boot.bin")
