@@ -6,7 +6,13 @@ if __name__ == "__main__":
 
     with open ("boot-raw.bin", "rb") as file:
         data = file.read()
-        data_formatted = data[:510] + b"\x55\xAA"
+        print("data len", len(data))
+        if len(data) > 510:
+            data_formatted = data[:510]
+        else:
+            data_formatted = data + b"\x00" * (510 - len(data))
+        data_formatted += b"\x55\xAA"
+        print(data_formatted)
 
     with open("boot.bin", "wb") as file:
         file.write(data_formatted)
