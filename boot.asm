@@ -407,10 +407,8 @@ main:
 		xor di, di
 		mov cx, RANGE
 		rep movsw
-		popa
 		
 		; Limit fps to 60 using bios wait interupts.
-		pusha
 		xor cx, cx
    		mov  dx, 16667  
     	mov  ah, 86h
