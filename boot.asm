@@ -274,32 +274,31 @@ main:
 			cmp cx, 200
 			jae .endif_y_render_loop
 				; Main render loop.
+				; Assume pixel is being drawn unless found otherwise.
+				; Avoids a few mov instructions.
+				mov dl, 0x0F
 
 				cmp bx, 0
 				ja .endif_left_segment
 					; Left segment.
-					mov dl, 0x0F
 					jmp .endif_blank_area
 				.endif_left_segment:
 
 				cmp cx, 0
 				ja .endif_top_segment
 					; Top segment.
-					mov dl, 0x0F
 					jmp .endif_blank_area
 				.endif_top_segment:
 
 				cmp bx, 319
 				jb .endif_right_segment
 					; Right segment.
-					mov dl, 0x0F
 					jmp .endif_blank_area
 				.endif_right_segment:
 
 				cmp cx, 199
 				jb .endif_bottom_segment 
 					; Bottom segment.
-					mov dl, 0x0F
 					jmp .endif_blank_area
 				.endif_bottom_segment:
 
