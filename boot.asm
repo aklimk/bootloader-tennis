@@ -64,10 +64,6 @@ main:
 
 	; ~~~~~ INITILIZE GAME VARIABLES ~~~~~
 
-	; ~~~~~ INITILIZE PADDLES ~~~~~
-	; Both paddles start at 1, at the top, just after the border.
-	mov ax, 0x0101
-
 	; ~~~~~ INITILIZE BALL VELOCITY ~~~~~~
 	; Use the gen rand velocity function to generate a random velocity for both ball x and y.
 	; gen_rand_velocity generates to the dl register.
@@ -75,6 +71,10 @@ main:
 	mov bl, dl
 	call gen_rand_velocity
 	mov bh, dl
+
+	; ~~~~~ INITILIZE PADDLES ~~~~~
+	; Both paddles start at 1, at the top, just after the border.
+	mov ax, 0x0101
 
 	; ~~~~~ INITILIZE BALL POSITION ~~~~~	
 	; Ball position starts at the center.
@@ -419,9 +419,6 @@ render_rectangle:
 ; Ball velocity starts at a random number from -3 - 3 (not 0) for both x and y.
 ; Generates to  register.
 gen_rand_velocity:
-	push ax
-	push bx
-
 	; Read byte from timer, psuedo-random byte.
 	in al, 0x40
 
@@ -438,12 +435,6 @@ gen_rand_velocity:
 	; range becomes -3 - -1 and 1 - 3 .
 	cmc
 	adc ah, 0
-
-	; save result to dl
-	mov dl, ah
-
-	pop bx
-	pop ax
 
 	ret
 
