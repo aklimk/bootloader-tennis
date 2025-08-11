@@ -1,0 +1,555 @@
+     1                                  [bits 16]
+     2                                  [org 0x7C00]
+     3                                  
+     4                                  ; Compile time constants.
+     5                                  
+     6                                  STACK_SIZE equ 0xAAAA
+     7                                  STACK_BOTTOM equ 0x8000
+     8                                  
+     9                                  SCREEN_WIDTH equ 320
+    10                                  SCREEN_HEIGHT equ 200
+    11                                  RANGE equ (SCREEN_HEIGHT * SCREEN_WIDTH) / 2
+    12                                  
+    13                                  BALL_DIM equ 5
+    14                                  BALL_START_X equ (SCREEN_WIDTH - BALL_DIM) / 2
+    15                                  BALL_START_Y equ (SCREEN_HEIGHT - BALL_DIM) / 2
+    16                                  PLAYER_PADDLE_OFFSET equ 20
+    17                                  ENEMY_PADDLE_OFFSET equ 319 - PLAYER_PADDLE_OFFSET - PLAYER_PADDLE_WIDTH
+    18                                  PLAYER_PADDLE_WIDTH equ 5
+    19                                  PLAYER_PADDLE_HEIGHT equ 50
+    20                                  
+    21                                  
+    22                                  
+    23                                  ; ~~~~~ CODE SECTION ~~~~~
+    24                                  
+    25                                  section .text
+    26                                  
+    27                                  
+    28                                  ; ~~~~~ SETUP STACK SPACE ~~~~~
+    29                                  setup_stack:
+    30                                  	; Set up stack space by setting stack segment register and stack pointer register.
+    31 00000000 B80080                  	mov ax, STACK_BOTTOM
+    32 00000003 8ED0                    	mov ss, ax
+    33 00000005 BCAAAA                  	mov sp, STACK_SIZE
+    34                                  
+    35                                  
+    36                                  main:
+    37                                  	; ~~~~~ SETUP VIDEO ~~~~~
+    38                                  	; 320x200 8 bit color graphical mode.
+    39                                  	; Memory adressing is done using a segment and offset.
+    40                                  	; Video memory starts at segment 0xA000.
+    41                                  	; Video memory is 1 byte per pixel, column major, index from top left.
+    42 00000008 B81300                  	mov ax, 0x13
+    43 0000000B CD10                    	int 0x10
+    44                                  
+    45                                  	; ~~~~~ 16 BIT REGISTERS AND GAME VARIABLE MAP ~~~~~
+    46                                  
+    47                                  	; Registers
+    48                                  	; ax, bx, cx, dx - general purpose, 16 bit or byte adressable, supports immediate mov
+    49                                  	; si, di, bp, sp - general purpose, 16 bit, supports immediate mov
+    50                                  	; Note sp is reserved for stack usage.
+    51                                  
+    52                                  	; Game variables
+    53                                  	; Left paddle vertical position : al 
+    54                                  	; Right paddle vertical position : ah
+    55                                  	; Ball velocity x : bl
+    56                                  	; Ball velocity y : bh
+    57                                  	; Ball position x : si
+    58                                  	; Ball position y : di 
+    59                                  	; Left paddle score : cl
+    60                                  	; Right paddle score : ch
+    61                                  	; Leaves dx (dl, dh), bp free
+    62                                  
+    63                                  
+    64                                  
+    65                                  	; ~~~~~ INITILIZE GAME VARIABLES ~~~~~
+    66                                  
+    67                                  	; ~~~~~ INITILIZE BALL VELOCITY ~~~~~~
+    68                                  	; Use the gen rand velocity function to generate a random velocity for both ball x and y.
+    69                                  	; gen_rand_velocity generates to the dl register.
+    70 0000000D E87501                  	call gen_rand_velocity
+    71 00000010 88E3                    	mov bl, ah
+    72 00000012 E87001                  	call gen_rand_velocity
+    73 00000015 88E7                    	mov bh, ah
+    74                                  
+    75                                  	; ~~~~~ INITILIZE PADDLES ~~~~~
+    76                                  	; Both paddles start at 1, at the top, just after the border.
+    77 00000017 B80101                  	mov ax, 0x0101
+    78                                  
+    79                                  	; ~~~~~ INITILIZE BALL POSITION ~~~~~	
+    80                                  	; Ball position starts at the center.
+    81 0000001A BE9D00                  	mov si, BALL_START_X
+    82 0000001D BF6100                  	mov di, BALL_START_Y
+    83                                  
+    84                                  	; ~~~~~ INITILIZE PADDLE SCORES ~~~~~
+    85 00000020 31C9                    	xor cx, cx ; one byte register clear
+    86                                  
+    87                                  
+    88                                  
+    89                                  	; ~~~~~ MAIN GAME LOOP ~~~~~
+    90                                  	.game_loop:
+    91                                  		; ~~~~~ BEEPING TEST ~~~~~
+    92                                  		; Beep test.
+    93                                  		; push ax
+    94                                  		; mov ah, 0x0E
+    95                                  		; mov al, 7
+    96                                  		; int 0x10
+    97                                  		; pop ax
+    98                                  
+    99                                  
+   100                                  
+   101                                  		; ~~~~~ GAME INPUT LOGIC ~~~~~
+   102                                  		; Start paddle input, use non-blocking poll of keyboard presses.
+   103                                  		; ah = key scan code, zf = 0 if key presed. al = ascii char, ax = 0 if no key pressed.
+   104 00000022 50                      		push ax
+   105 00000023 B401                    		mov ah, 0x01
+   106 00000025 CD16                    		int 0x16
+   107                                  
+   108 00000027 7501                    		jnz SHORT .pop_endif
+   109 00000029 58                      			pop ax 
+   110                                  		.pop_endif:
+   111                                  
+   112 0000002A 741D                    		jz SHORT .endif
+   113                                  			; If key detected, redo with blocking input. As non-blocking seems to miss keys.
+   114 0000002C 30E4                    			xor ah, ah
+   115 0000002E CD16                    			int 0x16
+   116                                  			; Move scan code to dh, so ax can be popped from the stack.
+   117 00000030 88E6                    			mov dh, ah
+   118 00000032 58                      			pop ax
+   119                                  
+   120                                  			; Test if 0x48 (up) scancode detected.
+   121 00000033 80FE48                  			cmp dh, 0x48
+   122 00000036 7506                    			jne SHORT .if_down
+   123                                  				; Block movment if paddle is too high.
+   124 00000038 3C04                    				cmp al, 4
+   125 0000003A 7602                    				jbe SHORT .if_down
+   126 0000003C 2C04                    					sub al, 4
+   127                                  			; Test if 0x50 (down) scancode detected.
+   128                                  			.if_down:
+   129 0000003E 80FE50                  			cmp dh, 0x50
+   130 00000041 7506                    			jne SHORT .endif
+   131                                  				; Block movement if paddle is too low.
+   132 00000043 3C91                    				cmp al, 199 - PLAYER_PADDLE_HEIGHT - 4
+   133 00000045 7302                    				jae SHORT .endif
+   134 00000047 0404                    					add al, 4
+   135                                  		.endif:
+   136                                  
+   137                                  
+   138                                  		
+   139                                  		; ~~~~~ GAME PHYSICS LOGIC ~~~~~
+   140                                  
+   141                                  		; ~~~~~ BALL POSITION UPDATE ~~~~~
+   142                                  		; Need to upgrade 8 bit register to 16 bit in order to add together.
+   143                                  		; movsx is a sign-preserving mov.
+   144                                  		; X component.
+   145 00000049 31D2                    		xor dx, dx
+   146 0000004B 0FBED3                  		movsx dx, bl
+   147 0000004E 01D6                    		add si, dx
+   148                                  		; Y component.
+   149 00000050 31D2                    		xor dx, dx 
+   150 00000052 0FBED7                  		movsx dx, bh
+   151 00000055 01D7                    		add di, dx
+   152                                  
+   153                                  		; ~~~~~ BALL COLLISION DETECTION ~~~~~
+   154                                  
+   155                                  		; ~~~~~ PLAYER SCORING ZONE ~~~~~
+   156                                  		; Detect if the right side of the ball is to the left of the left edge of the left paddle.
+   157                                  		; This indicates the enemy has scored.
+   158 00000057 83FE0F                  		cmp si, PLAYER_PADDLE_OFFSET - BALL_DIM
+   159 0000005A 7305                    		jae .end_if_left_wall
+   160                                  			; Enemy has scored.
+   161 0000005C FEC5                    			inc ch
+   162 0000005E E98201                  			jmp show_score
+   163                                  		.end_if_left_wall:
+   164                                  
+   165                                  		; ~~~~~ ENEMY SCORING ZONE ~~~~~
+   166                                  		; Detect if the left side of the ball is to the right of the right edge of the right paddle.
+   167 00000061 81FE2601                		cmp si, 319 - PLAYER_PADDLE_OFFSET - PLAYER_PADDLE_WIDTH
+   168 00000065 7605                    		jbe .end_if_right_wall
+   169                                  			; Player has scored.
+   170 00000067 FEC1                    			inc cl
+   171 00000069 E97701                  			jmp show_score
+   172                                  		.end_if_right_wall:
+   173                                  
+   174                                  		; ~~~~~ LEFT PADDLE ~~~~~
+   175 0000006C 50                      		push ax
+   176 0000006D 30E4                    		xor ah, ah
+   177 0000006F 89C5                    		mov bp, ax
+   178 00000071 58                      		pop ax
+   179                                  
+   180                                  		; Check if the left edge of the ball is left of the right edge of the left paddle.
+   181                                  		; if ballposx > OFFSET + WIDTH then no hit.
+   182 00000072 83FE19                  		cmp si, PLAYER_PADDLE_OFFSET + PLAYER_PADDLE_WIDTH 
+   183 00000075 7703                    		ja SHORT .endif_left_paddle_x
+   184 00000077 E81901                  			call paddle_vertical_hit_detection
+   185                                  		.endif_left_paddle_x:
+   186                                  
+   187                                  		; ~~~~~ RIGHT PADDLE ~~~~~
+   188 0000007A 50                      		push ax
+   189 0000007B 88E0                    		mov al, ah
+   190 0000007D 30E4                    		xor ah, ah
+   191 0000007F 89C5                    		mov bp, ax
+   192 00000081 58                      		pop ax
+   193                                  
+   194                                  		; Check if the right edge of the ball is left of the left edge of the right paddle.
+   195                                  		; if ballposx + BALLSIZEX < 319 - OFFSET - WIDTH then no hit.
+   196                                  		; if ballposx < 319 - OFFSET - WIDTH - BALLSIZEX then no hit.
+   197 00000082 81FE2101                		cmp si, 319 - PLAYER_PADDLE_OFFSET - PLAYER_PADDLE_WIDTH - BALL_DIM
+   198 00000086 7203                    		jb SHORT .endif_right_paddle_x
+   199 00000088 E80801                  			call paddle_vertical_hit_detection
+   200                                  		.endif_right_paddle_x:
+   201                                  
+   202                                  		; ~~~~~ ROOF ~~~~~
+   203 0000008B 83FF01                  		cmp di, 1
+   204 0000008E 7302                    		jae .end_if_roof
+   205                                  			; Flip y velocity.
+   206 00000090 F6DF                    			neg bh
+   207                                  		.end_if_roof:
+   208                                  
+   209                                  		; ~~~~~ FLOOR ~~~~~
+   210 00000092 81FFC200                		cmp di, 199 - BALL_DIM
+   211 00000096 7602                    		jbe .end_if_floor
+   212                                  			; Flip y velocity.
+   213 00000098 F6DF                    			neg bh
+   214                                  		.end_if_floor:
+   215                                  
+   216                                  
+   217                                  
+   218                                  		; ~~~~~ AI PLAYER MOVEMENT ~~~~~
+   219                                  		; If ball is higher than paddle, go up. Otherwise go down.
+   220 0000009A 31D2                    		xor dx, dx
+   221 0000009C 88E2                    		mov dl, ah
+   222 0000009E 83C219                  		add dx, PLAYER_PADDLE_HEIGHT / 2
+   223                                  		; Jump if paddle has a lower or equal value (is higher up) than the ball.
+   224 000000A1 39FA                    		cmp dx, di
+   225 000000A3 7607                    		jbe .endif_move_up	
+   226                                  			; Jump if enemy paddle is at 1 (can't move up).
+   227 000000A5 80FC01                  			cmp ah, 1
+   228 000000A8 7602                    			jbe .endif_move_up
+   229 000000AA FECC                    				dec ah
+   230                                  		.endif_move_up:
+   231 000000AC 31D2                    		xor dx, dx
+   232 000000AE 88E2                    		mov dl, ah
+   233 000000B0 83C219                  		add dx, PLAYER_PADDLE_HEIGHT / 2
+   234                                  		; Jump if paddle has a higher or equal value (is lower down) than the ball.
+   235 000000B3 39FA                    		cmp dx, di
+   236 000000B5 7307                    		jae .endif_move_down
+   237                                  			; Jump if enemy paddle is at 197 (Can't move down).
+   238 000000B7 80FC94                  			cmp ah, 198 - PLAYER_PADDLE_HEIGHT
+   239 000000BA 7302                    			jae .endif_move_down
+   240 000000BC FEC4                    				inc ah	
+   241                                  		.endif_move_down:
+   242                                  
+   243                                  
+   244                                  		
+   245                                  		; ~~~~~ RENDERING LOGIC ~~~~~
+   246                                  		; Frames are rendered to a temporary memory area (0x4000), and then copied
+   247                                  		; graphical memory area for 13h mode (0xA000). 
+   248                                  		; This prevents tearing effects due to video updates on partially completed
+   249                                  		; renders.
+   250                                  
+   251                                  		; Ds does not support direct mov, use a general register first.
+   252                                  		; ES holds the memory segment for rendering to, direct it to a temporary
+   253                                  		; area.
+   254 000000BE 50                      		push ax
+   255 000000BF B80040                  		mov ax, 0x4000
+   256 000000C2 8EC0                    		mov es, ax
+   257 000000C4 58                      		pop ax
+   258                                  
+   259                                  
+   260                                  		; Render elements by using two for loops and jmp conditions.
+   261                                  		; This is slower than rendering each element individually but saves bytes.
+   262                                  		; BX, CX and DX are used as they are not needed in the rendering code.
+   263 000000C5 53                      		push bx
+   264 000000C6 51                      		push cx
+   265 000000C7 31DB                    		xor bx, bx
+   266                                  
+   267                                  		.x_render_loop:
+   268                                  		; For x < 320
+   269 000000C9 81FB4001                		cmp bx, 320
+   270 000000CD 0F839000                		jae .endif_x_render_loop
+   271 000000D1 31C9                    			xor cx, cx
+   272                                  			.y_render_loop:
+   273                                  			; For y < 200
+   274 000000D3 81F9C800                			cmp cx, 200
+   275 000000D7 0F838200                			jae .endif_y_render_loop
+   276                                  				; Main render loop.
+   277                                  				; Assume pixel is being drawn unless found otherwise.
+   278                                  				; Avoids a few mov instructions.
+   279 000000DB B20F                    				mov dl, 0x0F
+   280                                  
+   281 000000DD 83FB00                  				cmp bx, 0
+   282 000000E0 7702                    				ja .endif_left_segment
+   283                                  					; Left segment.
+   284 000000E2 EB68                    					jmp .endif_blank_area
+   285                                  				.endif_left_segment:
+   286                                  
+   287 000000E4 83F900                  				cmp cx, 0
+   288 000000E7 7702                    				ja .endif_top_segment
+   289                                  					; Top segment.
+   290 000000E9 EB61                    					jmp .endif_blank_area
+   291                                  				.endif_top_segment:
+   292                                  
+   293 000000EB 81FB3F01                				cmp bx, 319
+   294 000000EF 7202                    				jb .endif_right_segment
+   295                                  					; Right segment.
+   296 000000F1 EB59                    					jmp .endif_blank_area
+   297                                  				.endif_right_segment:
+   298                                  
+   299 000000F3 81F9C700                				cmp cx, 199
+   300 000000F7 7202                    				jb .endif_bottom_segment 
+   301                                  					; Bottom segment.
+   302 000000F9 EB51                    					jmp .endif_blank_area
+   303                                  				.endif_bottom_segment:
+   304                                  
+   305                                  				; Left paddle.
+   306                                  				; Pixel x >= Paddle x
+   307 000000FB 83FB14                  				cmp bx, PLAYER_PADDLE_OFFSET
+   308 000000FE 7213                    				jb .endif_lpaddle_x
+   309                                  					; Pixel x <= Paddle x + Paddle width
+   310 00000100 83FB19                  					cmp bx, PLAYER_PADDLE_OFFSET + PLAYER_PADDLE_WIDTH
+   311 00000103 770E                    					ja .endif_lpaddle_x2
+   312                                  						; Pixel y >= paddle y
+   313 00000105 38C1                    						cmp cl, al
+   314 00000107 720A                    						jb .endif_lpaddle_y1
+   315                                  							; Pixel y <= paddle y + paddle height
+   316 00000109 50                      							push ax
+   317 0000010A 0432                    							add al, PLAYER_PADDLE_HEIGHT
+   318 0000010C 38C1                    							cmp cl, al
+   319 0000010E 58                      							pop ax
+   320 0000010F 7702                    							ja .endif_lpaddle_y2
+   321 00000111 EB39                    								jmp .endif_blank_area
+   322                                  							.endif_lpaddle_y2:
+   323                                  						.endif_lpaddle_y1:
+   324                                  					.endif_lpaddle_x2:
+   325                                  				.endif_lpaddle_x:
+   326                                  
+   327                                  				; Right paddle.
+   328                                  				; Pixel x >= Paddle x
+   329 00000113 81FB2601                				cmp bx, 319 - PLAYER_PADDLE_OFFSET - PLAYER_PADDLE_WIDTH
+   330 00000117 7215                    				jb .endif_rpaddle_x
+   331                                  					; Pixel x <= Paddle x + Paddle width
+   332 00000119 81FB2B01                					cmp bx, 319 - PLAYER_PADDLE_OFFSET
+   333 0000011D 770F                    					ja .endif_rpaddle_x2
+   334                                  						; Pixel y >= paddle y
+   335 0000011F 38E1                    						cmp cl, ah
+   336 00000121 720B                    						jb .endif_rpaddle_y1
+   337                                  							; Pixel y <= paddle y + paddle height
+   338 00000123 50                      							push ax
+   339 00000124 80C432                  							add ah, PLAYER_PADDLE_HEIGHT
+   340 00000127 38E1                    							cmp cl, ah
+   341 00000129 58                      							pop ax
+   342 0000012A 7702                    							ja .endif_rpaddle_y2
+   343 0000012C EB1E                    								jmp .endif_blank_area
+   344                                  							.endif_rpaddle_y2:
+   345                                  						.endif_rpaddle_y1:
+   346                                  					.endif_rpaddle_x2:
+   347                                  				.endif_rpaddle_x:
+   348                                  
+   349                                  				
+   350                                  
+   351                                  				; Ball rendering.
+   352                                  				; Pixel x >= ballx
+   353 0000012E 39F3                    				cmp bx, si
+   354 00000130 7218                    				jb .endif_ball_x1
+   355                                  					; Pixel x <= ballx + ball width
+   356 00000132 56                      					push si
+   357 00000133 83C605                  					add si, BALL_DIM
+   358 00000136 39F3                    					cmp bx, si
+   359 00000138 5E                      					pop si
+   360 00000139 770F                    					ja .endif_ball_x2
+   361                                  						; Pixel y >= ball y
+   362 0000013B 39F9                    						cmp cx, di
+   363 0000013D 720B                    						jb .endif_ball_y1
+   364                                  							; Pixel y <= ball y + ball height
+   365 0000013F 57                      							push di
+   366 00000140 83C705                  							add di, BALL_DIM
+   367 00000143 39F9                    							cmp cx, di
+   368 00000145 5F                      							pop di
+   369 00000146 7702                    							ja .endif_ball_y2
+   370 00000148 EB02                    								jmp .endif_blank_area
+   371                                  							.endif_ball_y2:
+   372                                  						.endif_ball_y1:
+   373                                  					.endif_ball_x2:
+   374                                  				.endif_ball_x1:
+   375                                  
+   376                                  				; ELSE
+   377                                  				; Otherwise draw blank pixel.
+   378 0000014A B200                    				mov dl, 0x00 
+   379                                  
+   380                                  				.endif_blank_area:
+   381                                  
+   382                                  				; Draw calculated pixel to rendering area.
+   383 0000014C 56                      				push si 
+   384 0000014D 89CE                    				mov si, cx
+   385 0000014F 69F64001                				imul si, SCREEN_WIDTH
+   386 00000153 01DE                    				add si, bx
+   387 00000155 268814                  				mov BYTE [es:si], dl
+   388 00000158 5E                      				pop si
+   389                                  
+   390 00000159 41                      				inc cx
+   391 0000015A E976FF                  				jmp .y_render_loop 
+   392                                  
+   393                                  			.endif_y_render_loop:
+   394                                  
+   395 0000015D 43                      			inc bx
+   396 0000015E E968FF                  			jmp .x_render_loop
+   397                                  
+   398                                  		.endif_x_render_loop:
+   399                                  
+   400 00000161 59                      		pop cx
+   401 00000162 5B                      		pop bx
+   402                                  
+   403                                  
+   404                                  		; Copy render over to actuall video memory area. (flip).
+   405 00000163 60                      		pusha
+   406 00000164 FC                      		cld
+   407                                  		; Set ds to source memory area
+   408 00000165 06                      		push es
+   409 00000166 1F                      		pop ds 
+   410                                  		; Set es to destination memory area
+   411 00000167 B800A0                  		mov ax, 0xA000
+   412 0000016A 8EC0                    		mov es, ax
+   413                                  
+   414                                  		; Clear indexes and copy memory over.
+   415 0000016C 31F6                    		xor si, si
+   416 0000016E 31FF                    		xor di, di
+   417 00000170 B9007D                  		mov cx, RANGE
+   418 00000173 F3A5                    		rep movsw
+   419 00000175 61                      		popa
+   420                                  		
+   421                                  		; Limit fps to 60 using bios wait interupts.
+   422 00000176 60                      		pusha
+   423 00000177 B90000                  		mov  cx, 0
+   424 0000017A BA1B41                     		mov  dx, 16667  
+   425 0000017D B486                        	mov  ah, 86h
+   426 0000017F CD15                        	int  15h
+   427 00000181 61                      		popa
+   428                                  
+   429 00000182 E99DFE                  		jmp .game_loop
+   430                                  	 
+   431                                  
+   432                                  ; Ball velocity starts at a random number from -3 - 3 (not 0) for both x and y.
+   433                                  ; Generates to  register.
+   434                                  gen_rand_velocity:
+   435                                  	; Read byte from timer, psuedo-random byte.
+   436 00000185 E440                    	in al, 0x40
+   437                                  
+   438                                  	; Multiply al by 6 and put it into ax.
+   439                                  	; overflow causes ah to be in the range 0-5.	
+   440 00000187 B306                    	mov bl, 6
+   441 00000189 F6E3                    	mul bl
+   442                                  
+   443                                  	; Shift the range 0-5 to -3 to 2. 
+   444 0000018B 80EC03                  	sub ah, 3
+   445                                  
+   446                                  	; Flip the cf flag and add it back to ah.
+   447                                  	; cf is 1 for positive results (0, 1, 2),
+   448                                  	; range becomes -3 - -1 and 1 - 3 .
+   449 0000018E F5                      	cmc
+   450 0000018F 80D400                  	adc ah, 0
+   451                                  
+   452 00000192 C3                      	ret
+   453                                  
+   454                                  
+   455                                  
+   456                                  ; General hit detection for the vertical portion of a paddle.
+   457                                  ; Paddle y position should be stored in bp register as input.
+   458                                  ; No output.
+   459                                  paddle_vertical_hit_detection:
+   460                                  	; Check if the ball is below the top edge of the paddle.
+   461 00000193 31D2                    	xor dx, dx
+   462 00000195 89EA                    	mov dx, bp
+   463 00000197 83EA05                  	sub dx, BALL_DIM
+   464 0000019A 39D7                    	cmp di, dx
+   465 0000019C 761D                    	jbe .endif_paddle_y1
+   466                                  		; Check if the ball is above the bottom edge of the paddle.
+   467 0000019E 31D2                    		xor dx, dx
+   468 000001A0 89EA                    		mov dx, bp
+   469 000001A2 83C232                  		add dx, PLAYER_PADDLE_HEIGHT
+   470 000001A5 39D7                    		cmp di, dx
+   471 000001A7 7312                    		jae .endif_paddle_y2
+   472                                  			; Ball is hitting the paddle. 
+   473                                  			; Invert y velocity then
+   474                                  			; Increment both vertical and horizontal velocity 
+   475                                  			; in whatever direction its heading.
+   476 000001A9 08FF                    			or bh, bh
+   477 000001AB 7902                    			jns SHORT .endif_left_dec1
+   478 000001AD FECF                    				dec bh
+   479                                  			.endif_left_dec1:
+   480 000001AF FEC7                    			inc bh
+   481                                  
+   482 000001B1 F6DB                    			neg bl
+   483 000001B3 08DB                    			or bl, bl
+   484 000001B5 7902                    			jns SHORT .endif_left_dec2
+   485 000001B7 FECB                    				dec bl
+   486                                  			.endif_left_dec2:
+   487 000001B9 FEC3                    			inc bl
+   488                                  		.endif_paddle_y2:
+   489                                  	.endif_paddle_y1:
+   490 000001BB C3                      	ret
+   491                                  
+   492                                  
+   493                                  
+   494                                  ; cl should store score.
+   495                                  ; si x position (text rows)
+   496                                  ; di y position (text cols)
+   497                                  show_score_single:
+   498                                  	; Move cursor to (si, di) position.
+   499                                  	; Page 0.
+   500 000001BC 30FF                    	xor bh, bh
+   501                                  	; Bright white palette
+   502 000001BE B30F                    	mov bl, 15
+   503                                  	; DH = row, DL = col
+   504 000001C0 C1E708                  	shl di, 8
+   505 000001C3 89FA                    	mov dx, di
+   506 000001C5 09F2                    	or dx, si
+   507                                  	; Move cursor opcode.
+   508 000001C7 B402                    	mov ah, 0x02
+   509 000001C9 CD10                    	int 0x10
+   510                                  
+   511 000001CB 31C0                    	xor ax, ax
+   512 000001CD 88C8                    	mov al, cl
+   513 000001CF D40A                    	aam
+   514 000001D1 86E0                    	xchg al, ah
+   515 000001D3 053030                  	add ax, 0x3030
+   516                                  
+   517 000001D6 88E2                    	mov dl, ah
+   518 000001D8 B40E                    	mov ah, 0x0E
+   519 000001DA CD10                    	int 0x10
+   520 000001DC 88D0                    	mov al, dl
+   521 000001DE B40E                    	mov ah, 0x0E
+   522 000001E0 CD10                    	int 0x10
+   523                                  
+   524 000001E2 C3                      	ret
+   525                                  
+   526                                  
+   527                                  show_score:
+   528 000001E3 60                      	pusha 
+   529                                  
+   530                                  	; Cheap clear screen
+   531 000001E4 B81300                  	mov ax, 0x13
+   532 000001E7 CD10                    	int 0x10
+   533                                  
+   534 000001E9 60                      	pusha 
+   535 000001EA BE0A00                  	mov si, 10 
+   536 000001ED BF0C00                  	mov di, 12
+   537 000001F0 E8C9FF                  	call show_score_single
+   538 000001F3 61                      	popa 
+   539                                  
+   540 000001F4 60                      	pusha 
+   541 000001F5 BE1B00                  	mov si, 27
+   542 000001F8 BF0C00                  	mov di, 12
+   543 000001FB 88E9                    	mov cl, ch
+   544 000001FD E8BCFF                  	call show_score_single
+   545 00000200 61                      	popa 
+   546                                  
+   547                                  	; Give screen 3 seconds.
+   548 00000201 B92D00                  	mov cx, 3000000 >> 16 
+   549 00000204 BAFFFF                  	mov dx, 0xFFFF
+   550 00000207 B486                    	mov ah, 0x86
+   551 00000209 CD15                    	int 0x15
+   552                                  
+   553 0000020B 61                      	popa
+   554                                  
+   555 0000020C E9F9FD                  	jmp main

@@ -26,6 +26,7 @@ section .text
 
 
 ; ~~~~~ SETUP STACK SPACE ~~~~~
+; Setup stack for pushing/popping and function calling.
 setup_stack:
 	; Set up stack space by setting stack segment register and stack pointer register.
 	mov ax, STACK_BOTTOM
@@ -156,7 +157,7 @@ main:
 		; Detect if the right side of the ball is to the left of the left edge of the left paddle.
 		; This indicates the enemy has scored.
 		cmp si, PLAYER_PADDLE_OFFSET - BALL_DIM
-		jae .end_if_left_wall
+		jae SHORT .end_if_left_wall
 			; Enemy has scored.
 			inc ch
 			jmp show_score
@@ -165,7 +166,7 @@ main:
 		; ~~~~~ ENEMY SCORING ZONE ~~~~~
 		; Detect if the left side of the ball is to the right of the right edge of the right paddle.
 		cmp si, 319 - PLAYER_PADDLE_OFFSET - PLAYER_PADDLE_WIDTH
-		jbe .end_if_right_wall
+		jbe SHORT .end_if_right_wall
 			; Player has scored.
 			inc cl
 			jmp show_score
@@ -201,14 +202,14 @@ main:
 
 		; ~~~~~ ROOF ~~~~~
 		cmp di, 1
-		jae .end_if_roof
+		jae SHORT .end_if_roof
 			; Flip y velocity.
 			neg bh
 		.end_if_roof:
 
 		; ~~~~~ FLOOR ~~~~~
 		cmp di, 199 - BALL_DIM
-		jbe .end_if_floor
+		jbe SHORT .end_if_floor
 			; Flip y velocity.
 			neg bh
 		.end_if_floor:
@@ -222,10 +223,10 @@ main:
 		add dx, PLAYER_PADDLE_HEIGHT / 2
 		; Jump if paddle has a lower or equal value (is higher up) than the ball.
 		cmp dx, di
-		jbe .endif_move_up	
+		jbe SHORT .endif_move_up	
 			; Jump if enemy paddle is at 1 (can't move up).
 			cmp ah, 1
-			jbe .endif_move_up
+			jbe SHORT .endif_move_up
 				dec ah
 		.endif_move_up:
 		xor dx, dx
@@ -233,10 +234,10 @@ main:
 		add dx, PLAYER_PADDLE_HEIGHT / 2
 		; Jump if paddle has a higher or equal value (is lower down) than the ball.
 		cmp dx, di
-		jae .endif_move_down
+		jae SHORT .endif_move_down
 			; Jump if enemy paddle is at 197 (Can't move down).
 			cmp ah, 198 - PLAYER_PADDLE_HEIGHT
-			jae .endif_move_down
+			jae SHORT .endif_move_down
 				inc ah	
 		.endif_move_down:
 
@@ -279,46 +280,46 @@ main:
 				mov dl, 0x0F
 
 				cmp bx, 0
-				ja .endif_left_segment
+				ja SHORT .endif_left_segment
 					; Left segment.
-					jmp .endif_blank_area
+					jmp SHORT .endif_blank_area
 				.endif_left_segment:
 
 				cmp cx, 0
-				ja .endif_top_segment
+				ja SHORT .endif_top_segment
 					; Top segment.
-					jmp .endif_blank_area
+					jmp SHORT .endif_blank_area
 				.endif_top_segment:
 
 				cmp bx, 319
-				jb .endif_right_segment
+				jb SHORT .endif_right_segment
 					; Right segment.
-					jmp .endif_blank_area
+					jmp SHORT .endif_blank_area
 				.endif_right_segment:
 
 				cmp cx, 199
-				jb .endif_bottom_segment 
+				jb SHORT .endif_bottom_segment 
 					; Bottom segment.
-					jmp .endif_blank_area
+					jmp SHORT .endif_blank_area
 				.endif_bottom_segment:
 
 				; Left paddle.
 				; Pixel x >= Paddle x
 				cmp bx, PLAYER_PADDLE_OFFSET
-				jb .endif_lpaddle_x
+				jb SHORT .endif_lpaddle_x
 					; Pixel x <= Paddle x + Paddle width
 					cmp bx, PLAYER_PADDLE_OFFSET + PLAYER_PADDLE_WIDTH
-					ja .endif_lpaddle_x2
+					ja SHORT .endif_lpaddle_x2
 						; Pixel y >= paddle y
 						cmp cl, al
-						jb .endif_lpaddle_y1
+						jb SHORT .endif_lpaddle_y1
 							; Pixel y <= paddle y + paddle height
 							push ax
 							add al, PLAYER_PADDLE_HEIGHT
 							cmp cl, al
 							pop ax
-							ja .endif_lpaddle_y2
-								jmp .endif_blank_area
+							ja SHORT .endif_lpaddle_y2
+								jmp SHORT .endif_blank_area
 							.endif_lpaddle_y2:
 						.endif_lpaddle_y1:
 					.endif_lpaddle_x2:
@@ -327,20 +328,20 @@ main:
 				; Right paddle.
 				; Pixel x >= Paddle x
 				cmp bx, 319 - PLAYER_PADDLE_OFFSET - PLAYER_PADDLE_WIDTH
-				jb .endif_rpaddle_x
+				jb SHORT .endif_rpaddle_x
 					; Pixel x <= Paddle x + Paddle width
 					cmp bx, 319 - PLAYER_PADDLE_OFFSET
-					ja .endif_rpaddle_x2
+					ja SHORT .endif_rpaddle_x2
 						; Pixel y >= paddle y
 						cmp cl, ah
-						jb .endif_rpaddle_y1
+						jb SHORT .endif_rpaddle_y1
 							; Pixel y <= paddle y + paddle height
 							push ax
 							add ah, PLAYER_PADDLE_HEIGHT
 							cmp cl, ah
 							pop ax
-							ja .endif_rpaddle_y2
-								jmp .endif_blank_area
+							ja SHORT .endif_rpaddle_y2
+								jmp SHORT .endif_blank_area
 							.endif_rpaddle_y2:
 						.endif_rpaddle_y1:
 					.endif_rpaddle_x2:
@@ -351,23 +352,23 @@ main:
 				; Ball rendering.
 				; Pixel x >= ballx
 				cmp bx, si
-				jb .endif_ball_x1
+				jb SHORT .endif_ball_x1
 					; Pixel x <= ballx + ball width
 					push si
 					add si, BALL_DIM
 					cmp bx, si
 					pop si
-					ja .endif_ball_x2
+					ja SHORT .endif_ball_x2
 						; Pixel y >= ball y
 						cmp cx, di
-						jb .endif_ball_y1
+						jb SHORT .endif_ball_y1
 							; Pixel y <= ball y + ball height
 							push di
 							add di, BALL_DIM
 							cmp cx, di
 							pop di
-							ja .endif_ball_y2
-								jmp .endif_blank_area
+							ja SHORT .endif_ball_y2
+								jmp SHORT .endif_blank_area
 							.endif_ball_y2:
 						.endif_ball_y1:
 					.endif_ball_x2:
@@ -462,13 +463,13 @@ paddle_vertical_hit_detection:
 	mov dx, bp
 	sub dx, BALL_DIM
 	cmp di, dx
-	jbe .endif_paddle_y1
+	jbe SHORT .endif_paddle_y1
 		; Check if the ball is above the bottom edge of the paddle.
 		xor dx, dx
 		mov dx, bp
 		add dx, PLAYER_PADDLE_HEIGHT
 		cmp di, dx
-		jae .endif_paddle_y2
+		jae SHORT .endif_paddle_y2
 			; Ball is hitting the paddle. 
 			; Invert y velocity then
 			; Increment both vertical and horizontal velocity 
