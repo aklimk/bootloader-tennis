@@ -516,6 +516,8 @@ show_score_single:
 
 
 show_score:
+	push cx
+
 	; Cheap clear screen
 	mov ax, 0x13
 	int 0x10
@@ -534,5 +536,7 @@ show_score:
 	mov dx, 0xFFFF
 	mov ah, 0x86
 	int 0x15
+
+	pop cx
 
 	jmp after_score_init
