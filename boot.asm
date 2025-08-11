@@ -174,10 +174,32 @@ main:
 		.end_if_right_wall:
 
 		; ~~~~~ LEFT PADDLE ~~~~~
-		call paddle_hit_detection
+		push ax
+		mov al, ah
+		xor ah, ah
+		mov bp, ax
+		pop ax
+
+		; Check if the left edge of the ball is left of the right edge of the left paddle.
+		; if ballposx > OFFSET + WIDTH then no hit.
+		cmp si, PLAYER_PADDLE_OFFSET + PLAYER_PADDLE_WIDTH 
+		ja SHORT .endif_left_paddle_x
+			call paddle_vertical_hit_detection
+		.endif_left_paddle_x:
 
 		; ~~~~~ RIGHT PADDLE ~~~~~
-		call paddle_hit_detection
+		push ax
+		xor ah, ah
+		mov bp, ax
+		pop ax
+
+		; Check if the right edge of the ball is left of the left edge of the right paddle.
+		; if ballposx + BALLSIZEX < 319 - OFFSET - WIDTH then no hit.
+		; if ballposx < 319 - OFFSET - WIDTH - BALLSIZEX then no hit.
+		cmp si, 319 - PLAYER_PADDLE_OFFSET - PLAYER_PADDLE_WIDTH - BALL_DIM
+		jb SHORT .endif_right_paddle_x
+			call paddle_vertical_hit_detection
+		.endif_right_paddle_x:
 
 		; ~~~~~ ROOF ~~~~~
 		cmp di, 1
@@ -427,13 +449,13 @@ gen_rand_velocity:
 paddle_vertical_hit_detection:
 	; Check if the ball is below the top edge of the paddle.
 	xor dx, dx
-	mov dl, bp
+	mov dx, bp
 	sub dx, BALL_DIM
 	cmp di, dx
 	jbe .endif_paddle_y1
 		; Check if the ball is above the bottom edge of the paddle.
 		xor dx, dx
-		mov dl, bp
+		mov dx, bp
 		add dx, PLAYER_PADDLE_HEIGHT
 		cmp di, dx
 		jae .endif_paddle_y2
@@ -455,6 +477,7 @@ paddle_vertical_hit_detection:
 			inc bl
 		.endif_paddle_y2:
 	.endif_paddle_y1:
+	ret
 
 
 
