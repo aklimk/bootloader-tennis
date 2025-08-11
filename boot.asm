@@ -303,8 +303,75 @@ main:
 				.endif_bottom_segment:
 
 				; Left paddle.
+				; Pixel x >= Paddle x
+				cmp bx, PLAYER_PADDLE_OFFSET
+				jb .endif_lpaddle_x
+					; Pixel x <= Paddle x + Paddle width
+					cmp bx, PLAYER_PADDLE_OFFSET + PLAYER_PADDLE_WIDTH
+					ja .endif_lpaddle_x2
+						; Pixel y >= paddle y
+						cmp cl, al
+						jb .endif_lpaddle_y1
+							; Pixel y <= paddle y + paddle height
+							push ax
+							add al, PLAYER_PADDLE_HEIGHT
+							cmp cl, al
+							pop ax
+							ja .endif_lpaddle_y2
+								jmp .endif_blank_area
+							.endif_lpaddle_y2:
+						.endif_lpaddle_y1:
+					.endif_lpaddle_x2:
+				.endif_lpaddle_x:
+
 				; Right paddle.
-				; Ball.
+				; Pixel x >= Paddle x
+				cmp bx, 319 - PLAYER_PADDLE_OFFSET - PLAYER_PADDLE_WIDTH
+				jb .endif_rpaddle_x
+					; Pixel x <= Paddle x + Paddle width
+					cmp bx, 319 - PLAYER_PADDLE_OFFSET
+					ja .endif_rpaddle_x2
+						; Pixel y >= paddle y
+						cmp cl, ah
+						jb .endif_rpaddle_y1
+							; Pixel y <= paddle y + paddle height
+							push ax
+							add ah, PLAYER_PADDLE_HEIGHT
+							cmp cl, ah
+							pop ax
+							ja .endif_rpaddle_y2
+								jmp .endif_blank_area
+							.endif_rpaddle_y2:
+						.endif_rpaddle_y1:
+					.endif_rpaddle_x2:
+				.endif_rpaddle_x:
+
+				
+
+				; Ball rendering.
+				; Pixel x >= ballx
+				cmp bx, si
+				jb .endif_ball_x1
+					; Pixel x <= ballx + ball width
+					push si
+					add si, BALL_DIM
+					cmp bx, si
+					pop si
+					ja .endif_ball_x2
+						; Pixel y >= ball y
+						cmp cx, di
+						jb .endif_ball_y1
+							; Pixel y <= ball y + ball height
+							push di
+							add di, BALL_DIM
+							cmp cx, di
+							pop di
+							ja .endif_ball_y2
+								jmp .endif_blank_area
+							.endif_ball_y2:
+						.endif_ball_y1:
+					.endif_ball_x2:
+				.endif_ball_x1:
 
 				; ELSE
 				; Otherwise draw blank pixel.
