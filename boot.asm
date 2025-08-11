@@ -68,9 +68,9 @@ main:
 	; Use the gen rand velocity function to generate a random velocity for both ball x and y.
 	; gen_rand_velocity generates to the dl register.
 	call gen_rand_velocity
-	mov bl, dl
+	mov bl, ah
 	call gen_rand_velocity
-	mov bh, dl
+	mov bh, ah
 
 	; ~~~~~ INITILIZE PADDLES ~~~~~
 	; Both paddles start at 1, at the top, just after the border.
