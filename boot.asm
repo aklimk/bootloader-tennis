@@ -42,8 +42,6 @@ main:
 	mov ax, 0x13
 	int 0x10
 
-
-
 	; ~~~~~ 16 BIT REGISTERS AND GAME VARIABLE MAP ~~~~~
 
 	; Registers
@@ -547,10 +545,6 @@ show_score:
 	mov dx, 0xFFFF
 	mov ah, 0x86
 	int 0x15
-
-	; Cheap clear screen
-	mov ax, 0x13
-	int 0x10
 
 	popa
 
