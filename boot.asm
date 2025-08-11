@@ -184,7 +184,6 @@ main:
 		; ~~~~~ ROOF ~~~~~
 		cmp di, 1
 		jae SHORT .end_if_roof
-			call make_beep
 			; Flip y velocity.
 			neg bh
 		.end_if_roof:
@@ -192,7 +191,6 @@ main:
 		; ~~~~~ FLOOR ~~~~~
 		cmp di, 199 - BALL_DIM
 		jbe SHORT .end_if_floor
-			call make_beep
 			; Flip y velocity.
 			neg bh
 		.end_if_floor:
@@ -448,7 +446,6 @@ paddle_vertical_hit_detection:
 		cmp di, ax
 		jae SHORT .endif_paddle_y2
 			; Ball is hitting the paddle. 
-			call make_beep
 			; Invert y velocity then
 			; Increment both vertical and horizontal velocity 
 			; in whatever direction its heading.
@@ -501,12 +498,6 @@ show_score_single:
 	ret
 
 
-
-make_beep:
-	mov ah, 0x0E
-	mov al, 7
-	int 0x10
-	ret
 
 show_score:
 	push cx
