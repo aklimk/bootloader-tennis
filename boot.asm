@@ -35,6 +35,10 @@ setup_stack:
 
 
 main:
+	; ~~~~~ INITILIZE PADDLE SCORES ~~~~~
+	xor cx, cx ; one byte register clear
+
+	after_score_init:	
 	; ~~~~~ SETUP VIDEO ~~~~~
 	; 320x200 8 bit color graphical mode.
 	; Memory adressing is done using a segment and offset.
@@ -51,15 +55,15 @@ main:
 	; Note sp is reserved for stack usage.
 
 	; Game variables
-	; Left paddle vertical position : al 
-	; Right paddle vertical position : ah
+	; Left paddle vertical position : dl 
+	; Right paddle vertical position : dh
 	; Ball velocity x : bl
 	; Ball velocity y : bh
 	; Ball position x : si
 	; Ball position y : di 
 	; Left paddle score : cl
 	; Right paddle score : ch
-	; Leaves dx (dl, dh), bp free
+	; Leaves ax (al, ah), bp free
 
 
 
@@ -75,15 +79,12 @@ main:
 
 	; ~~~~~ INITILIZE PADDLES ~~~~~
 	; Both paddles start at 1, at the top, just after the border.
-	mov ax, 0x0101
+	mov dx, 0x0101
 
 	; ~~~~~ INITILIZE BALL POSITION ~~~~~	
 	; Ball position starts at the center.
 	mov si, BALL_START_X
 	mov di, BALL_START_Y
-
-	; ~~~~~ INITILIZE PADDLE SCORES ~~~~~
-	xor cx, cx ; one byte register clear
 
 
 
@@ -102,37 +103,29 @@ main:
 		; ~~~~~ GAME INPUT LOGIC ~~~~~
 		; Start paddle input, use non-blocking poll of keyboard presses.
 		; ah = key scan code, zf = 0 if key presed. al = ascii char, ax = 0 if no key pressed.
-		push ax
 		mov ah, 0x01
 		int 0x16
-
-		jnz SHORT .pop_endif
-			pop ax 
-		.pop_endif:
 
 		jz SHORT .endif
 			; If key detected, redo with blocking input. As non-blocking seems to miss keys.
 			xor ah, ah
 			int 0x16
-			; Move scan code to dh, so ax can be popped from the stack.
-			mov dh, ah
-			pop ax
 
 			; Test if 0x48 (up) scancode detected.
-			cmp dh, 0x48
+			cmp ah, 0x48
 			jne SHORT .if_down
 				; Block movment if paddle is too high.
-				cmp al, 4
+				cmp dl, 4
 				jbe SHORT .if_down
-					sub al, 4
+					sub dl, 4
 			; Test if 0x50 (down) scancode detected.
 			.if_down:
-			cmp dh, 0x50
+			cmp ah, 0x50
 			jne SHORT .endif
 				; Block movement if paddle is too low.
-				cmp al, 199 - PLAYER_PADDLE_HEIGHT - 4
+				cmp dl, 199 - PLAYER_PADDLE_HEIGHT - 4
 				jae SHORT .endif
-					add al, 4
+					add dl, 4
 		.endif:
 
 
@@ -143,13 +136,13 @@ main:
 		; Need to upgrade 8 bit register to 16 bit in order to add together.
 		; movsx is a sign-preserving mov.
 		; X component.
-		xor dx, dx
-		movsx dx, bl
-		add si, dx
+		xor ax, ax
+		movsx ax, bl
+		add si, ax
 		; Y component.
-		xor dx, dx 
-		movsx dx, bh
-		add di, dx
+		xor ax, ax 
+		movsx ax, bh
+		add di, ax
 
 		; ~~~~~ BALL COLLISION DETECTION ~~~~~
 
@@ -173,10 +166,9 @@ main:
 		.end_if_right_wall:
 
 		; ~~~~~ LEFT PADDLE ~~~~~
-		push ax
-		xor ah, ah
+		xor ax, ax 
+		mov al, dl
 		mov bp, ax
-		pop ax
 
 		; Check if the left edge of the ball is left of the right edge of the left paddle.
 		; if ballposx > OFFSET + WIDTH then no hit.
@@ -186,11 +178,9 @@ main:
 		.endif_left_paddle_x:
 
 		; ~~~~~ RIGHT PADDLE ~~~~~
-		push ax
-		mov al, ah
-		xor ah, ah
+		xor ax, ax 
+		mov al, dh
 		mov bp, ax
-		pop ax
 
 		; Check if the right edge of the ball is left of the left edge of the right paddle.
 		; if ballposx + BALLSIZEX < 319 - OFFSET - WIDTH then no hit.
@@ -218,27 +208,27 @@ main:
 
 		; ~~~~~ AI PLAYER MOVEMENT ~~~~~
 		; If ball is higher than paddle, go up. Otherwise go down.
-		xor dx, dx
-		mov dl, ah
-		add dx, PLAYER_PADDLE_HEIGHT / 2
+		xor ax, ax
+		mov al, dh
+		add ax, PLAYER_PADDLE_HEIGHT / 2
 		; Jump if paddle has a lower or equal value (is higher up) than the ball.
-		cmp dx, di
+		cmp ax, di
 		jbe SHORT .endif_move_up	
 			; Jump if enemy paddle is at 1 (can't move up).
-			cmp ah, 1
+			cmp dh, 1
 			jbe SHORT .endif_move_up
-				dec ah
+				dec dh
 		.endif_move_up:
-		xor dx, dx
-		mov dl, ah
-		add dx, PLAYER_PADDLE_HEIGHT / 2
+		xor ax, ax
+		mov al, dh
+		add ax, PLAYER_PADDLE_HEIGHT / 2
 		; Jump if paddle has a higher or equal value (is lower down) than the ball.
-		cmp dx, di
+		cmp ax, di
 		jae SHORT .endif_move_down
 			; Jump if enemy paddle is at 197 (Can't move down).
-			cmp ah, 198 - PLAYER_PADDLE_HEIGHT
+			cmp dh, 198 - PLAYER_PADDLE_HEIGHT
 			jae SHORT .endif_move_down
-				inc ah	
+				inc dh	
 		.endif_move_down:
 
 
@@ -252,10 +242,8 @@ main:
 		; Ds does not support direct mov, use a general register first.
 		; ES holds the memory segment for rendering to, direct it to a temporary
 		; area.
-		push ax
 		mov ax, 0x4000
 		mov es, ax
-		pop ax
 
 
 		; Render elements by using two for loops and jmp conditions.
@@ -277,7 +265,7 @@ main:
 				; Main render loop.
 				; Assume pixel is being drawn unless found otherwise.
 				; Avoids a few mov instructions.
-				mov dl, 0x0F
+				mov al, 0x0F
 
 				cmp bx, 0
 				ja SHORT .endif_left_segment
@@ -311,13 +299,13 @@ main:
 					cmp bx, PLAYER_PADDLE_OFFSET + PLAYER_PADDLE_WIDTH
 					ja SHORT .endif_lpaddle_x2
 						; Pixel y >= paddle y
-						cmp cl, al
+						cmp cl, dl
 						jb SHORT .endif_lpaddle_y1
 							; Pixel y <= paddle y + paddle height
-							push ax
-							add al, PLAYER_PADDLE_HEIGHT
-							cmp cl, al
-							pop ax
+							push dx
+							add dl, PLAYER_PADDLE_HEIGHT
+							cmp cl, dl
+							pop dx
 							ja SHORT .endif_lpaddle_y2
 								jmp SHORT .endif_blank_area
 							.endif_lpaddle_y2:
@@ -333,13 +321,13 @@ main:
 					cmp bx, 319 - PLAYER_PADDLE_OFFSET
 					ja SHORT .endif_rpaddle_x2
 						; Pixel y >= paddle y
-						cmp cl, ah
+						cmp cl, dh
 						jb SHORT .endif_rpaddle_y1
 							; Pixel y <= paddle y + paddle height
-							push ax
-							add ah, PLAYER_PADDLE_HEIGHT
-							cmp cl, ah
-							pop ax
+							push dx
+							add dh, PLAYER_PADDLE_HEIGHT
+							cmp cl, dh
+							pop dx
 							ja SHORT .endif_rpaddle_y2
 								jmp SHORT .endif_blank_area
 							.endif_rpaddle_y2:
@@ -376,7 +364,7 @@ main:
 
 				; ELSE
 				; Otherwise draw blank pixel.
-				xor dl, dl
+				xor al, al
 
 				.endif_blank_area:
 
@@ -385,7 +373,7 @@ main:
 				mov si, cx
 				imul si, SCREEN_WIDTH
 				add si, bx
-				mov BYTE [es:si], dl
+				mov BYTE [es:si], al
 				pop si
 
 				inc cx
@@ -459,16 +447,16 @@ gen_rand_velocity:
 ; No output.
 paddle_vertical_hit_detection:
 	; Check if the ball is below the top edge of the paddle.
-	xor dx, dx
-	mov dx, bp
-	sub dx, BALL_DIM
-	cmp di, dx
+	xor ax, ax
+	mov ax, bp
+	sub ax, BALL_DIM
+	cmp di, ax
 	jbe SHORT .endif_paddle_y1
 		; Check if the ball is above the bottom edge of the paddle.
-		xor dx, dx
-		mov dx, bp
-		add dx, PLAYER_PADDLE_HEIGHT
-		cmp di, dx
+		xor ax, ax
+		mov ax, bp
+		add ax, PLAYER_PADDLE_HEIGHT
+		cmp di, ax
 		jae SHORT .endif_paddle_y2
 			; Ball is hitting the paddle. 
 			; Invert y velocity then
@@ -553,4 +541,4 @@ show_score:
 
 	popa
 
-	jmp main
+	jmp after_score_init
