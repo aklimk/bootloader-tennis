@@ -314,13 +314,10 @@ main:
 
 				; Draw calculated pixel to rendering area.
 				push si 
-				push di
 				mov si, cx
-				mov di, bx
 				imul si, SCREEN_WIDTH
-				add si, di
+				add si, bx
 				mov BYTE [es:si], dl
-				pop di
 				pop si
 
 				inc cx
