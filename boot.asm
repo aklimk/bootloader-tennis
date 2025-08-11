@@ -72,6 +72,9 @@ main:
 	; ~~~~~ INITILIZE BALL VELOCITY ~~~~~~
 	; Use the gen rand velocity function to generate a random velocity for both ball x and y.
 	; gen_rand_velocity generates to the dl register.
+	; Do stack stuff to increase randomness.
+	pusha
+	popa
 	call gen_rand_velocity
 	mov bl, ah
 	call gen_rand_velocity
@@ -251,17 +254,15 @@ main:
 		; BX, CX and DX are used as they are not needed in the rendering code.
 		push bx
 		push cx
-		xor bx, bx
+		mov bx, 320
 
 		.x_render_loop:
 		; For x < 320
-		cmp bx, 320
-		jae .endif_x_render_loop
-			xor cx, cx
+		js .endif_x_render_loop
+			mov cx, 200
 			.y_render_loop:
 			; For y < 200
-			cmp cx, 200
-			jae .endif_y_render_loop
+			js .endif_y_render_loop
 				; Main render loop.
 				; Assume pixel is being drawn unless found otherwise.
 				; Avoids a few mov instructions.
@@ -376,12 +377,12 @@ main:
 				mov BYTE [es:si], al
 				pop si
 
-				inc cx
+				dec cx
 				jmp .y_render_loop 
 
 			.endif_y_render_loop:
 
-			inc bx
+			dec bx
 			jmp .x_render_loop
 
 		.endif_x_render_loop:
