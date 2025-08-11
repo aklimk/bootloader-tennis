@@ -376,7 +376,7 @@ main:
 
 				; ELSE
 				; Otherwise draw blank pixel.
-				mov dl, 0x00 
+				xor dl, dl
 
 				.endif_blank_area:
 
@@ -421,7 +421,7 @@ main:
 		
 		; Limit fps to 60 using bios wait interupts.
 		pusha
-		mov  cx, 0
+		xor cx, cx
    		mov  dx, 16667  
     	mov  ah, 86h
     	int  15h
