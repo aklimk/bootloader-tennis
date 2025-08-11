@@ -73,8 +73,6 @@ main:
 	; Use the gen rand velocity function to generate a random velocity for both ball x and y.
 	; gen_rand_velocity generates to the dl register.
 	; Do stack stuff to increase randomness.
-	pusha
-	popa
 	call gen_rand_velocity
 	mov bl, ah
 	call gen_rand_velocity
@@ -93,16 +91,6 @@ main:
 
 	; ~~~~~ MAIN GAME LOOP ~~~~~
 	.game_loop:
-		; ~~~~~ BEEPING TEST ~~~~~
-		; Beep test.
-		; push ax
-		; mov ah, 0x0E
-		; mov al, 7
-		; int 0x10
-		; pop ax
-
-
-
 		; ~~~~~ GAME INPUT LOGIC ~~~~~
 		; Start paddle input, use non-blocking poll of keyboard presses.
 		; ah = key scan code, zf = 0 if key presed. al = ascii char, ax = 0 if no key pressed.
@@ -161,7 +149,7 @@ main:
 
 		; ~~~~~ ENEMY SCORING ZONE ~~~~~
 		; Detect if the left side of the ball is to the right of the right edge of the right paddle.
-		cmp si, 319 - PLAYER_PADDLE_OFFSET - PLAYER_PADDLE_WIDTH
+		cmp si, 319 - PLAYER_PADDLE_OFFSET
 		jbe SHORT .end_if_right_wall
 			; Player has scored.
 			inc cl
@@ -196,6 +184,7 @@ main:
 		; ~~~~~ ROOF ~~~~~
 		cmp di, 1
 		jae SHORT .end_if_roof
+			call make_beep
 			; Flip y velocity.
 			neg bh
 		.end_if_roof:
@@ -203,6 +192,7 @@ main:
 		; ~~~~~ FLOOR ~~~~~
 		cmp di, 199 - BALL_DIM
 		jbe SHORT .end_if_floor
+			call make_beep
 			; Flip y velocity.
 			neg bh
 		.end_if_floor:
@@ -217,10 +207,10 @@ main:
 		; Jump if paddle has a lower or equal value (is higher up) than the ball.
 		cmp ax, di
 		jbe SHORT .endif_move_up	
-			; Jump if enemy paddle is at 3 or below (can't move up).
-			cmp dh, 4
+			; Jump if enemy paddle is at 4 or below (can't move up).
+			cmp dh, 5
 			jb SHORT .endif_move_up
-				sub dh, 3
+				sub dh, 4
 		.endif_move_up:
 
 		xor ax, ax
@@ -229,10 +219,10 @@ main:
 		; Jump if paddle has a higher or equal value (is lower down) than the ball.
 		cmp ax, di
 		jae SHORT .endif_move_down
-			; Jump if enemy paddle is at 197 or above (Can't move down).
-			cmp dh, 198 - PLAYER_PADDLE_HEIGHT - 3
+			; Jump if enemy paddle is at 195 or above (Can't move down).
+			cmp dh, 198 - PLAYER_PADDLE_HEIGHT - 4
 			ja SHORT .endif_move_down
-				sub dh, 3
+				add dh, 4
 		.endif_move_down:
 
 
@@ -425,16 +415,15 @@ gen_rand_velocity:
 	in al, 0x40
 
 	; Multiply al by 6 and put it into ax.
-	; overflow causes ah to be in the range 0-5.	
-	mov bl, 6
+	; overflow causes ah to be in the range 0-1.	
+	mov bl, 2
 	mul bl
 
-	; Shift the range 0-5 to -3 to 2. 
-	sub ah, 3
+	; Shift the range 0-1 to -1 to 0. 
+	sub ah, 1
 
 	; Flip the cf flag and add it back to ah.
 	; cf is 1 for positive results (0, 1, 2),
-	; range becomes -3 - -1 and 1 - 3 .
 	cmc
 	adc ah, 0
 
@@ -459,6 +448,7 @@ paddle_vertical_hit_detection:
 		cmp di, ax
 		jae SHORT .endif_paddle_y2
 			; Ball is hitting the paddle. 
+			call make_beep
 			; Invert y velocity then
 			; Increment both vertical and horizontal velocity 
 			; in whatever direction its heading.
@@ -529,8 +519,8 @@ show_score:
 	mov cl, ch
 	call show_score_single
 
-	; Give screen 3 seconds.
-	mov cx, 3000000 >> 16 
+	; Give screen 1 second.
+	mov cx, 1000000 >> 16 
 	mov dx, 0xFFFF
 	mov ah, 0x86
 	int 0x15
@@ -538,3 +528,10 @@ show_score:
 	pop cx
 
 	jmp after_score_init
+
+
+make_beep:
+	mov ah, 0x0E
+	mov al, 7
+	int 0x10
+	ret
