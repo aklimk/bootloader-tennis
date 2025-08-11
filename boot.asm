@@ -217,21 +217,22 @@ main:
 		; Jump if paddle has a lower or equal value (is higher up) than the ball.
 		cmp ax, di
 		jbe SHORT .endif_move_up	
-			; Jump if enemy paddle is at 1 (can't move up).
-			cmp dh, 1
-			jbe SHORT .endif_move_up
-				dec dh
+			; Jump if enemy paddle is at 3 or below (can't move up).
+			cmp dh, 4
+			jb SHORT .endif_move_up
+				sub dh, 3
 		.endif_move_up:
+
 		xor ax, ax
 		mov al, dh
 		add ax, PLAYER_PADDLE_HEIGHT / 2
 		; Jump if paddle has a higher or equal value (is lower down) than the ball.
 		cmp ax, di
 		jae SHORT .endif_move_down
-			; Jump if enemy paddle is at 197 (Can't move down).
-			cmp dh, 198 - PLAYER_PADDLE_HEIGHT
-			jae SHORT .endif_move_down
-				inc dh	
+			; Jump if enemy paddle is at 197 or above (Can't move down).
+			cmp dh, 198 - PLAYER_PADDLE_HEIGHT - 3
+			ja SHORT .endif_move_down
+				sub dh, 3
 		.endif_move_down:
 
 
