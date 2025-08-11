@@ -256,98 +256,87 @@ main:
 		mov es, ax
 		pop ax
 
-		; Clear screen.
-		; Uses string instructions to block clear the screen.
-		pusha
-		cld
-		xor ax, ax
-		xor di, di
-		mov cx, RANGE
-		rep stosw
-		popa
 
-		; Render border.
-		; Left line.
-		pusha
-		xor ax, ax
+		; Render elements by using two for loops and jmp conditions.
+		; This is slower than rendering each element individually but saves bytes.
+		; BX, CX and DX are used as they are not needed in the rendering code.
+		push bx
+		push cx
 		xor bx, bx
-		xor cx, cx
-		mov dx, 199
-		call render_rectangle
-		popa
-		; Top line.
-		pusha
-		xor ax, ax
-		xor bx, bx
-		mov cx, 319
-		xor dx, dx
-		call render_rectangle
-		popa
-		; Right line.
-		pusha
-		mov ax, 319
-		xor bx, bx
-		mov cx, 319
-		mov dx, 199
-		call render_rectangle
-		popa
-		; Bottom line.
-		pusha
-		xor ax, ax
-		mov bx, 199
-		mov cx, 319
-		mov dx, 199
-		call render_rectangle
-		popa
 
-		; Render left paddle.
-		pusha
-		; Move left paddle vertical position to bx register.
-		xor bx, bx
-		mov bl, al
-		; Left paddle horizontal position is constant.
-		mov ax, PLAYER_PADDLE_OFFSET
+		.x_render_loop:
+		; For x < 320
+		cmp bx, 320
+		jae .endif_x_render_loop
+			xor cx, cx
+			.y_render_loop:
+			; For y < 200
+			cmp cx, 200
+			jae .endif_y_render_loop
+				; Main render loop.
 
-		; Calculate bottom right position using preset width, height values.
-		mov cx, ax
-		add cx, PLAYER_PADDLE_WIDTH
-		mov dx, bx
-		add dx, PLAYER_PADDLE_HEIGHT
+				cmp bx, 0
+				ja .endif_left_segment
+					; Left segment.
+					mov dl, 0x0F
+					jmp .endif_blank_area
+				.endif_left_segment:
 
-		call render_rectangle
-		popa
+				cmp cx, 0
+				ja .endif_top_segment
+					; Top segment.
+					mov dl, 0x0F
+					jmp .endif_blank_area
+				.endif_top_segment:
 
-		; Render right paddle.
-		pusha
-		; Move right paddle vertical position to bx register.
-		xor bx, bx
-		mov bl, ah
-		; Right paddle horizontal position is constant.
-		mov ax, ENEMY_PADDLE_OFFSET
+				cmp bx, 319
+				jb .endif_right_segment
+					; Right segment.
+					mov dl, 0x0F
+					jmp .endif_blank_area
+				.endif_right_segment:
 
-		; Calculate bottom right position using preset width, height values.
-		mov cx, ax
-		add cx, PLAYER_PADDLE_WIDTH
-		mov dx, bx
-		add dx, PLAYER_PADDLE_HEIGHT
+				cmp cx, 199
+				jb .endif_bottom_segment 
+					; Bottom segment.
+					mov dl, 0x0F
+					jmp .endif_blank_area
+				.endif_bottom_segment:
 
-		call render_rectangle
-		popa
+				; Left paddle.
+				; Right paddle.
+				; Ball.
 
-		; Render ball.
-		pusha
-		; Ball x and y position.
-		mov ax, si
-		mov bx, di
+				; ELSE
+				; Otherwise draw blank pixel.
+				mov dl, 0x00 
 
-		; Calculate bottom right position using BALL_DIM.
-		mov cx, ax
-		add cx, BALL_DIM
-		mov dx, bx
-		add dx, BALL_DIM
+				.endif_blank_area:
 
-		call render_rectangle
-		popa
+				; Draw calculated pixel to rendering area.
+				push si 
+				push di
+				mov si, cx
+				mov di, bx
+				imul si, SCREEN_WIDTH
+				add si, di
+				mov BYTE [es:si], dl
+				pop di
+				pop si
+
+				inc cx
+				jmp .y_render_loop 
+
+			.endif_y_render_loop:
+
+			inc bx
+			jmp .x_render_loop
+
+		.endif_x_render_loop:
+
+		pop cx
+		pop bx
+
 
 		; Copy render over to actuall video memory area. (flip).
 		pusha
@@ -376,45 +365,6 @@ main:
 
 		jmp .game_loop
 	 
-	
-
-; ax = topleft x 
-; also modifies di (x counter)
-; bx = topleft y (also is the y counter)
-; cx = bottomright x
-; dx = bottomright y
-; also modifies si
-render_rectangle:
-	.loop_y:
-	; Jump to end of loop if topleft y > bottomright y.
-	cmp bx, dx
-	ja SHORT .end_loop_y
-		mov di, ax
-		.loop_x:
-		; Jump to end if topleft x > bottomright x.
-		cmp di, cx
-		ja SHORT .end_loop_x
-
-			; Main rendering logic for rectangle.		
-			; Render a white pixel at screen position (di, bx).
-			; Si holds the unrolled position.
-			mov si, bx
-			imul si, SCREEN_WIDTH
-			add si, di
-			mov BYTE [es:si], 0x0F
-
-			; Increment the x counter.
-			inc di
-			jmp SHORT .loop_x
-		.end_loop_x:
-		
-		; Increment the y counter.
-		inc bx
-		jmp SHORT .loop_y
-	.end_loop_y:
-	ret
-
-
 
 ; Ball velocity starts at a random number from -3 - 3 (not 0) for both x and y.
 ; Generates to  register.
@@ -520,13 +470,13 @@ show_score:
 
 	pusha 
 	mov si, 10 
-	mov di, 10
+	mov di, 12
 	call show_score_single
 	popa 
 
 	pusha 
-	mov si, 20
-	mov di, 10
+	mov si, 27
+	mov di, 12
 	mov cl, ch
 	call show_score_single
 	popa 
