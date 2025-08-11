@@ -175,7 +175,6 @@ main:
 
 		; ~~~~~ LEFT PADDLE ~~~~~
 		push ax
-		mov al, ah
 		xor ah, ah
 		mov bp, ax
 		pop ax
@@ -189,6 +188,7 @@ main:
 
 		; ~~~~~ RIGHT PADDLE ~~~~~
 		push ax
+		mov al, ah
 		xor ah, ah
 		mov bp, ax
 		pop ax
@@ -245,13 +245,21 @@ main:
 
 		
 		; ~~~~~ RENDERING LOGIC ~~~~~
+		; Frames are rendered to a temporary memory area (0x4000), and then copied
+		; graphical memory area for 13h mode (0xA000). 
+		; This prevents tearing effects due to video updates on partially completed
+		; renders.
+
 		; Ds does not support direct mov, use a general register first.
+		; ES holds the memory segment for rendering to, direct it to a temporary
+		; area.
 		push ax
 		mov ax, 0x4000
 		mov es, ax
 		pop ax
 
 		; Clear screen.
+		; Uses string instructions to block clear the screen.
 		pusha
 		cld
 		xor ax, ax
@@ -360,12 +368,12 @@ main:
 		rep movsw
 		popa
 		
-		; Limit fps to 60.
+		; Limit fps to 60 using bios wait interupts.
 		pusha
-		mov  cx, 0           ; CX:DX = microseconds to wait
+		mov  cx, 0
    		mov  dx, 16667  
     	mov  ah, 86h
-    	int  15h             ; waits with interrupts enabled
+    	int  15h
 		popa
 
 		jmp .game_loop
@@ -481,26 +489,23 @@ paddle_vertical_hit_detection:
 
 
 
-show_score:
-	; Show current score
-	pusha 
-
-	; Cheap clear screen
-	mov ax, 0x13
-	int 0x10
-
-	; Move cursor for left paddle score.
+; cl should store score.
+; si x position (text rows)
+; di y position (text cols)
+show_score_single:
+	; Move cursor to (si, di) position.
 	; Page 0.
 	xor bh, bh
 	; Bright white palette
 	mov bl, 15
 	; DH = row, DL = col
-	mov dx, (10 << 8) | 10
+	shl di, 8
+	mov dx, di
+	or dx, si
 	; Move cursor opcode.
 	mov ah, 0x02
 	int 0x10
 
-	; Print left paddle score.
 	xor ax, ax
 	mov al, cl
 	aam
@@ -514,30 +519,28 @@ show_score:
 	mov ah, 0x0E
 	int 0x10
 
-	; Move cursor for right paddle score.
-	; Page 0.
-	xor bh, bh
-	; Bright white palette
-	mov bl, 15
-	; DH = row, DL = col
-	mov dx, (10 << 8) | 30
-	; Move cursor opcode.
-	mov ah, 0x02
+	ret
+
+
+show_score:
+	pusha 
+
+	; Cheap clear screen
+	mov ax, 0x13
 	int 0x10
 
-	; Print right paddle score.
-	xor ax, ax
-	mov al, ch
-	aam
-	xchg al, ah
-	add ax, 0x3030
+	pusha 
+	mov si, 10 
+	mov di, 10
+	call show_score_single
+	popa 
 
-	mov dl, ah
-	mov ah, 0x0E
-	int 0x10
-	mov al, dl
-	mov ah, 0x0E
-	int 0x10
+	pusha 
+	mov si, 20
+	mov di, 10
+	mov cl, ch
+	call show_score_single
+	popa 
 
 	; Give screen 3 seconds.
 	mov cx, 3000000 >> 16 
