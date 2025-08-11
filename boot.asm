@@ -516,31 +516,23 @@ show_score_single:
 
 
 show_score:
-	pusha 
-
 	; Cheap clear screen
 	mov ax, 0x13
 	int 0x10
 
-	pusha 
 	mov si, 10 
 	mov di, 12
 	call show_score_single
-	popa 
 
-	pusha 
 	mov si, 27
 	mov di, 12
 	mov cl, ch
 	call show_score_single
-	popa 
 
 	; Give screen 3 seconds.
 	mov cx, 3000000 >> 16 
 	mov dx, 0xFFFF
 	mov ah, 0x86
 	int 0x15
-
-	popa
 
 	jmp after_score_init
