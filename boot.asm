@@ -475,10 +475,8 @@ paddle_vertical_hit_detection:
 ; di y position (text cols)
 show_score_single:
 	; Move cursor to (si, di) position.
-	; Page 0.
-	xor bh, bh
-	; Bright white palette
-	mov bl, 15
+	; bh = Page 0. bl = 15 (bright white palette).
+	mov bx, 15
 	; DH = row, DL = col
 	shl di, 8
 	mov dx, di
@@ -502,6 +500,13 @@ show_score_single:
 
 	ret
 
+
+
+make_beep:
+	mov ah, 0x0E
+	mov al, 7
+	int 0x10
+	ret
 
 show_score:
 	push cx
@@ -528,10 +533,3 @@ show_score:
 	pop cx
 
 	jmp after_score_init
-
-
-make_beep:
-	mov ah, 0x0E
-	mov al, 7
-	int 0x10
-	ret
