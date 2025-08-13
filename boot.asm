@@ -17,7 +17,7 @@ PLAYER_PADDLE_OFFSET equ 20
 ENEMY_PADDLE_OFFSET equ 319 - PLAYER_PADDLE_OFFSET - PLAYER_PADDLE_WIDTH
 PLAYER_PADDLE_WIDTH equ 5
 PLAYER_PADDLE_HEIGHT equ 50
-
+ENEMY_MOVEMENT_SPEED equ 6
 
 
 ; ~~~~~ CODE SECTION ~~~~~
@@ -206,9 +206,9 @@ main:
 		cmp ax, di
 		jbe SHORT .endif_move_up	
 			; Jump if enemy paddle is at 4 or below (can't move up).
-			cmp dh, 5
+			cmp dh, 1 + ENEMY_MOVEMENT_SPEED
 			jb SHORT .endif_move_up
-				sub dh, 4
+				sub dh, ENEMY_MOVEMENT_SPEED
 		.endif_move_up:
 
 		xor ax, ax
@@ -218,9 +218,9 @@ main:
 		cmp ax, di
 		jae SHORT .endif_move_down
 			; Jump if enemy paddle is at 195 or above (Can't move down).
-			cmp dh, 198 - PLAYER_PADDLE_HEIGHT - 4
+			cmp dh, 198 - PLAYER_PADDLE_HEIGHT - ENEMY_MOVEMENT_SPEED
 			ja SHORT .endif_move_down
-				add dh, 4
+				add dh, ENEMY_MOVEMENT_SPEED
 		.endif_move_down:
 
 
