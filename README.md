@@ -1,17 +1,29 @@
 # bootloader-tennis
-A custom bootloader game selection screen and primitive tennis like game, written entirely on the 512 byte bios bootloader section.
+A primitive tennis-like game written as an entirely self-contained 512 byte Master Boot Record (MBR) to be loaded by the BIOS.
 
-# Building and Running Using Build Script
-To both build and run the project in one pass, invoke the build script with the "--run" flag. You will need NASM and QEMU installed and in PATH:<br/>
+# Features
+- Includes a boot signature, can be read by a real BIOS.
+- Entirely self contained, does not load any additional code. Highly space-optimised assembly that fits entirely within the 512 byte MBR boot sector.
+- Uses '13h' BIOS video mode to support a 320x200 screen resolution with 8 bit color (black and white for the time being).
+- Includes a custom doubly buffered renderer that uses BIOS string instructions to quickly display frames, eliminating flickering.
+- Includes up/down input with two modes (press vs hold).
+- Ball velocity increases after every collision and resets after every point. The ball supports 255 different velocities.
+- Includes a score totals screen after every point.
+- Includes an AI opponent with configurable movement speed, resulting in 255 distinct difficulties.
+- Includes ball pyshics and collisions with boundries.
+
+# Dependencies
+Building the assembly script requires NASM, while running the resulting script requires a BIOS emulator. The python script uses 
+QEMU when invoked with the "--run" flag.
+
+# Building/Running Using Python Build Script
+To both build and run the project use "--run" flag. Requires NASM and QEMU installed.</br>
 `py build.py --run`
 
-To only build the project but not run it, run the script with no arguments.
+Omit arguments to build without running. Requires NASM installed. </br>
 `py build.py`
 
-To later run the program, invoke a bios emulator, with QEMU this would look like.:<br/>
-`qemu-system-i386 -fda boot.bin`
-
-# Building and Running Without Build Script.
+# Building Without Python Build Script.
 Building without the python build script requires 3 steps, you will need NASM and utilties for truncating and appending binary data to files.
 1. Assemble the boot.asm assembly file.
 2. Turncate the file to 510 bytes.
@@ -20,7 +32,12 @@ Building without the python build script requires 3 steps, you will need NASM an
 On linux, this would look like:<br/>
 `nasm boot.asm -o boot-raw.bin && truncate -s 510 boot.bin | echo -en "\x55\xAA" >> boot.bin`
 
-To later run the built program, invoke a bios emulator, in QEMU this would look like:<br/>
+# Running Without Python Build Script.
+Invoke a bios emulator on the created binary file, in QEMU this would look like:<br/>
 `qemu-system-i386 -fda boot.bin`
+
+
+
+
 
 
