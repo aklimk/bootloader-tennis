@@ -1,6 +1,12 @@
 # bootloader-tennis
 A primitive tennis-like game written as an entirely self-contained 512 byte Master Boot Record (MBR) to be loaded by the BIOS.
 
+<p float="left">
+  <img src="main_game.png" width="33%" />
+  <img src="score_screen.png" width="33%" /> 
+</p>
+
+
 # Features
 - Includes a boot signature, can be read by a real BIOS.
 - Entirely self contained, does not load any additional code. Highly space-optimised assembly that fits entirely within the 512 byte MBR boot sector.
