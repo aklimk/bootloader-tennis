@@ -1,5 +1,5 @@
 # bootloader-tennis
-A primitive tennis-like game written as an entirely self-contained 512 byte Master Boot Record (MBR) to be loaded by the BIOS.
+A primitive tennis-like game written as an entirely self-contained 512 byte Master Boot Record (MBR) to be loaded and ran by any system BIOS.
 
 # Images 
 <table>
