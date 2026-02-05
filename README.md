@@ -1,11 +1,17 @@
 # bootloader-tennis
 A primitive tennis-like game written as an entirely self-contained 512 byte Master Boot Record (MBR) to be loaded by the BIOS.
 
-<p float="left">
-  <img src="main_game.png" width="45%" />
-  <img src="score_screen.png" width="45%" /> 
-</p>
-
+# Images 
+<table>
+  <tr>
+    <td valign="top" width="33%">
+      <img src="main_game.png" width="100%">
+    </td>
+    <td valign="top" width="33%">
+      <img src="score_screen.png" width="100%">
+    </td>
+  </tr>
+</table>
 
 # Features
 - Includes a boot signature, can be read by a real BIOS.
